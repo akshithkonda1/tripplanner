@@ -1,0 +1,11 @@
+{
+  "name": "trippy-scripts",
+  "version": "1.0.0",
+  "description": "Utility scripts for Trippy application",
+  "scripts": {
+    "seed": "node seed-data.js"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1600.0"
+  }
+}
