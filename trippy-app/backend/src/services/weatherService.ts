@@ -1,34 +1,34 @@
 import axios from 'axios';
 
-interface Location {
+const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY!;
+const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5';
+
+interface Coordinates {
   lat: number;
   lng: number;
   name?: string;
 }
 
 interface WeatherForecast {
-  location: Location;
-  forecasts: DailyForecast[];
+  location: string;
+  coordinates: Coordinates;
+  forecast: Array<{
+    date: string;
+    temp: {
+      min: number;
+      max: number;
+      avg: number;
+    };
+    conditions: string;
+    description: string;
+    precipitation: number;
+    humidity: number;
+    windSpeed: number;
+  }>;
 }
-
-interface DailyForecast {
-  date: string;
-  high: number;
-  low: number;
-  condition: string;
-  precipitation: number;
-  humidity: number;
-  wind: {
-    speed: number;
-    direction: string;
-  };
-}
-
-const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
-const WEATHER_API_BASE = 'https://api.weatherapi.com/v1';
 
 export async function getWeatherForecast(
-  locations: Location[],
+  locations: Coordinates[],
   startDate: string,
   endDate: string
 ): Promise<WeatherForecast[]> {
@@ -36,77 +36,110 @@ export async function getWeatherForecast(
 
   for (const location of locations) {
     try {
-      const response = await axios.get(`${WEATHER_API_BASE}/forecast.json`, {
+      const response = await axios.get(`${OPENWEATHER_BASE_URL}/forecast`, {
         params: {
-          key: WEATHER_API_KEY,
-          q: `${location.lat},${location.lng}`,
-          days: calculateDays(startDate, endDate),
-          aqi: 'no'
+          lat: location.lat,
+          lon: location.lng,
+          appid: OPENWEATHER_API_KEY,
+          units: 'imperial',
+          cnt: 40 // 5 days, 3-hour intervals
         }
       });
 
-      const dailyForecasts: DailyForecast[] = response.data.forecast.forecastday.map(
-        (day: any) => ({
-          date: day.date,
-          high: day.day.maxtemp_f,
-          low: day.day.mintemp_f,
-          condition: day.day.condition.text,
-          precipitation: day.day.daily_chance_of_rain,
-          humidity: day.day.avghumidity,
-          wind: {
-            speed: day.day.maxwind_mph,
-            direction: 'N' // Simplified
-          }
-        })
-      );
-
-      forecasts.push({
-        location,
-        forecasts: dailyForecasts
-      });
+      const forecast = processWeatherData(response.data, location);
+      forecasts.push(forecast);
     } catch (error) {
-      console.error(`Failed to get weather for ${location.lat},${location.lng}:`, error);
-      // Return mock data on error for development
-      forecasts.push({
-        location,
-        forecasts: generateMockForecast(startDate, endDate)
-      });
+      console.error(`Failed to fetch weather for ${location.name}:`, error);
+      // Return basic forecast if API fails
+      forecasts.push(getDefaultForecast(location));
     }
   }
 
   return forecasts;
 }
 
-function calculateDays(startDate: string, endDate: string): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return Math.min(diffDays + 1, 14); // API limit is typically 14 days
+function processWeatherData(data: any, location: Coordinates): WeatherForecast {
+  const dailyForecasts = new Map<string, any[]>();
+
+  // Group forecasts by day
+  data.list.forEach((item: any) => {
+    const date = new Date(item.dt * 1000).toISOString().split('T')[0];
+    if (!dailyForecasts.has(date)) {
+      dailyForecasts.set(date, []);
+    }
+    dailyForecasts.get(date)!.push(item);
+  });
+
+  // Process each day
+  const forecast = Array.from(dailyForecasts.entries()).map(([date, items]) => {
+    const temps = items.map(i => i.main.temp);
+    const conditions = items[Math.floor(items.length / 2)].weather[0];
+
+    return {
+      date,
+      temp: {
+        min: Math.round(Math.min(...temps)),
+        max: Math.round(Math.max(...temps)),
+        avg: Math.round(temps.reduce((a, b) => a + b, 0) / temps.length)
+      },
+      conditions: conditions.main,
+      description: conditions.description,
+      precipitation: items.reduce((sum, i) => sum + (i.pop || 0), 0) / items.length * 100,
+      humidity: items.reduce((sum, i) => sum + i.main.humidity, 0) / items.length,
+      windSpeed: items.reduce((sum, i) => sum + i.wind.speed, 0) / items.length
+    };
+  });
+
+  return {
+    location: location.name || `${location.lat}, ${location.lng}`,
+    coordinates: location,
+    forecast
+  };
 }
 
-function generateMockForecast(startDate: string, endDate: string): DailyForecast[] {
-  const days = calculateDays(startDate, endDate);
-  const forecasts: DailyForecast[] = [];
-  const conditions = ['Sunny', 'Partly cloudy', 'Cloudy', 'Light rain'];
+function getDefaultForecast(location: Coordinates): WeatherForecast {
+  return {
+    location: location.name || `${location.lat}, ${location.lng}`,
+    coordinates: location,
+    forecast: []
+  };
+}
 
-  for (let i = 0; i < days; i++) {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + i);
+export async function getRouteWeather(
+  routeCoordinates: Coordinates[],
+  date: string
+): Promise<Map<string, any>> {
+  const weatherMap = new Map();
 
-    forecasts.push({
-      date: date.toISOString().split('T')[0],
-      high: 70 + Math.floor(Math.random() * 20),
-      low: 50 + Math.floor(Math.random() * 15),
-      condition: conditions[Math.floor(Math.random() * conditions.length)],
-      precipitation: Math.floor(Math.random() * 30),
-      humidity: 40 + Math.floor(Math.random() * 30),
-      wind: {
-        speed: 5 + Math.floor(Math.random() * 15),
-        direction: 'NW'
-      }
-    });
+  // Sample points along route (every ~50 miles)
+  const sampledPoints = sampleRoutePoints(routeCoordinates, 50);
+
+  for (const point of sampledPoints) {
+    try {
+      const response = await axios.get(`${OPENWEATHER_BASE_URL}/forecast`, {
+        params: {
+          lat: point.lat,
+          lon: point.lng,
+          appid: OPENWEATHER_API_KEY,
+          units: 'imperial'
+        }
+      });
+
+      weatherMap.set(`${point.lat},${point.lng}`, response.data);
+    } catch (error) {
+      console.error('Failed to fetch route weather:', error);
+    }
   }
 
-  return forecasts;
+  return weatherMap;
+}
+
+function sampleRoutePoints(
+  coordinates: Coordinates[],
+  intervalMiles: number
+): Coordinates[] {
+  // Simple sampling - take every Nth point
+  // In production, calculate actual distances
+  const step = Math.max(1, Math.floor(coordinates.length / 10));
+  return coordinates.filter((_, index) => index % step === 0);
 }

@@ -1,31 +1,169 @@
 interface BookingLinks {
-  [provider: string]: string;
+  booking: string;
+  expedia: string;
+  marriott: string;
+  hyatt: string;
+  ihg: string;
+  viator: string;
 }
 
-interface AccommodationOption {
-  name: string;
-  type: 'hotel' | 'motel' | 'airbnb' | 'camping';
-  pricePerNight: number;
-  rating: number;
-  amenities: string[];
-  bookingUrl: string;
+interface BookingConfig {
+  affiliateIds: {
+    booking: string;
+    expedia: string;
+    viator: string;
+  };
 }
+
+const config: BookingConfig = {
+  affiliateIds: {
+    booking: process.env.BOOKING_AFFILIATE_ID || '',
+    expedia: process.env.EXPEDIA_AFFILIATE_ID || '',
+    viator: process.env.VIATOR_PARTNER_ID || ''
+  }
+};
 
 export async function generateBookingLinks(
-  address: string,
-  checkInDate: string,
-  checkOutDate?: string
+  location: string,
+  checkinDate: string,
+  checkoutDate?: string,
+  guests: number = 2
 ): Promise<BookingLinks> {
-  const encodedAddress = encodeURIComponent(address);
-  const checkIn = formatDate(checkInDate);
-  const checkOut = checkOutDate ? formatDate(checkOutDate) : getNextDay(checkInDate);
+  const encodedLocation = encodeURIComponent(location);
+  const checkin = formatDate(checkinDate);
+  const checkout = formatDate(checkoutDate || getNextDay(checkinDate));
 
   return {
-    'Booking.com': `https://www.booking.com/searchresults.html?ss=${encodedAddress}&checkin=${checkIn}&checkout=${checkOut}`,
-    'Hotels.com': `https://www.hotels.com/search.do?destination=${encodedAddress}&startDate=${checkIn}&endDate=${checkOut}`,
-    'Airbnb': `https://www.airbnb.com/s/${encodedAddress}/homes?checkin=${checkIn}&checkout=${checkOut}`,
-    'Expedia': `https://www.expedia.com/Hotel-Search?destination=${encodedAddress}&startDate=${checkIn}&endDate=${checkOut}`
+    booking: buildBookingComLink(encodedLocation, checkin, checkout, guests),
+    expedia: buildExpediaLink(encodedLocation, checkin, checkout, guests),
+    marriott: buildMarriottLink(encodedLocation, checkin, checkout, guests),
+    hyatt: buildHyattLink(encodedLocation, checkin, checkout, guests),
+    ihg: buildIHGLink(encodedLocation, checkin, checkout, guests),
+    viator: buildViatorLink(encodedLocation)
   };
+}
+
+function buildBookingComLink(
+  location: string,
+  checkin: string,
+  checkout: string,
+  guests: number
+): string {
+  const params = new URLSearchParams({
+    ss: location,
+    checkin: checkin,
+    checkout: checkout,
+    group_adults: guests.toString(),
+    no_rooms: '1',
+    selected_currency: 'USD'
+  });
+
+  if (config.affiliateIds.booking) {
+    params.append('aid', config.affiliateIds.booking);
+  }
+
+  return `https://www.booking.com/searchresults.html?${params.toString()}`;
+}
+
+function buildExpediaLink(
+  location: string,
+  checkin: string,
+  checkout: string,
+  guests: number
+): string {
+  const params = new URLSearchParams({
+    destination: location,
+    startDate: checkin,
+    endDate: checkout,
+    rooms: '1',
+    adults: guests.toString()
+  });
+
+  if (config.affiliateIds.expedia) {
+    params.append('affcid', config.affiliateIds.expedia);
+  }
+
+  return `https://www.expedia.com/Hotel-Search?${params.toString()}`;
+}
+
+function buildMarriottLink(
+  location: string,
+  checkin: string,
+  checkout: string,
+  guests: number
+): string {
+  return `https://www.marriott.com/search/findHotels.mi?` +
+    `destinationAddress.city=${location}&` +
+    `fromDate=${checkin}&` +
+    `toDate=${checkout}&` +
+    `numRooms=1&` +
+    `numAdults=${guests}`;
+}
+
+function buildHyattLink(
+  location: string,
+  checkin: string,
+  checkout: string,
+  guests: number
+): string {
+  return `https://www.hyatt.com/search/simple.jsp?` +
+    `location=${location}&` +
+    `checkinDate=${checkin}&` +
+    `checkoutDate=${checkout}&` +
+    `rooms=1&` +
+    `adults=${guests}`;
+}
+
+function buildIHGLink(
+  location: string,
+  checkin: string,
+  checkout: string,
+  guests: number
+): string {
+  return `https://www.ihg.com/hotels/us/en/find-hotels/hotel/list?` +
+    `qDest=${location}&` +
+    `qCiD=${checkin.split('-')[2]}&` +
+    `qCiMy=${checkin.substring(0, 7)}&` +
+    `qCoD=${checkout.split('-')[2]}&` +
+    `qCoMy=${checkout.substring(0, 7)}&` +
+    `qAdlt=${guests}&` +
+    `qRms=1`;
+}
+
+function buildViatorLink(location: string): string {
+  const params = new URLSearchParams({
+    text: location,
+    searchType: 'all'
+  });
+
+  if (config.affiliateIds.viator) {
+    params.append('pid', config.affiliateIds.viator);
+  }
+
+  return `https://www.viator.com/searchResults/all?${params.toString()}`;
+}
+
+function formatDate(dateString: string): string {
+  // Convert to YYYY-MM-DD format
+  const date = new Date(dateString);
+  return date.toISOString().split('T')[0];
+}
+
+function getNextDay(dateString: string): string {
+  const date = new Date(dateString);
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().split('T')[0];
+}
+
+export async function trackAffiliateClick(
+  platform: string,
+  tripId: string,
+  userId: string
+): Promise<void> {
+  // Log affiliate clicks for analytics
+  console.log('Affiliate click:', { platform, tripId, userId, timestamp: new Date() });
+
+  // In production: Store in DynamoDB for tracking conversions
 }
 
 export async function searchAccommodations(
@@ -38,11 +176,11 @@ export async function searchAccommodations(
     type?: string[];
     amenities?: string[];
   }
-): Promise<AccommodationOption[]> {
+): Promise<any[]> {
   // In production, this would call hotel booking APIs
   // For now, return mock data
 
-  const mockOptions: AccommodationOption[] = [
+  const mockOptions = [
     {
       name: 'Comfort Inn & Suites',
       type: 'hotel',
@@ -92,14 +230,6 @@ export async function searchAccommodations(
     filtered = filtered.filter(opt => preferences.type!.includes(opt.type));
   }
 
-  if (preferences?.amenities && preferences.amenities.length > 0) {
-    filtered = filtered.filter(opt =>
-      preferences.amenities!.some(amenity =>
-        opt.amenities.map(a => a.toLowerCase()).includes(amenity.toLowerCase())
-      )
-    );
-  }
-
   return filtered;
 }
 
@@ -112,7 +242,6 @@ export async function getRestaurantRecommendations(
   }
 ): Promise<any[]> {
   // In production, this would call Yelp or Google Places API
-  // For now, return mock data
 
   return [
     {
@@ -146,15 +275,4 @@ export async function getRestaurantRecommendations(
       dietary: ['Vegetarian options', 'Vegan options', 'Gluten-free options']
     }
   ];
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toISOString().split('T')[0];
-}
-
-function getNextDay(dateString: string): string {
-  const date = new Date(dateString);
-  date.setDate(date.getDate() + 1);
-  return date.toISOString().split('T')[0];
 }
