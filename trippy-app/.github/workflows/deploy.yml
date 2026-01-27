@@ -1,0 +1,184 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'trippy-app/backend/**'
+      - 'trippy-app/infrastructure/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '20.x'
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: trippy-app/infrastructure/package-lock.json
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install infrastructure dependencies
+        working-directory: trippy-app/infrastructure
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: trippy-app/backend
+        run: npm ci
+
+      - name: Build backend
+        working-directory: trippy-app/backend
+        run: npm run build
+
+      - name: Build infrastructure
+        working-directory: trippy-app/infrastructure
+        run: npm run build
+
+      - name: Deploy CDK Stacks
+        working-directory: trippy-app/infrastructure
+        run: npx cdk deploy --all --require-approval never
+        env:
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          GRAPHHOPPER_API_KEY: ${{ secrets.GRAPHHOPPER_API_KEY }}
+
+      - name: Get Stack Outputs
+        id: stack-outputs
+        working-directory: trippy-app/infrastructure
+        run: |
+          HTTP_URL=$(aws cloudformation describe-stacks \
+            --stack-name TrippyBackendStack \
+            --query "Stacks[0].Outputs[?ExportName=='TrippyHttpApiUrl'].OutputValue" \
+            --output text)
+          WS_URL=$(aws cloudformation describe-stacks \
+            --stack-name TrippyBackendStack \
+            --query "Stacks[0].Outputs[?ExportName=='TrippyWebSocketUrl'].OutputValue" \
+            --output text)
+          echo "http_api_url=$HTTP_URL" >> $GITHUB_OUTPUT
+          echo "ws_api_url=$WS_URL" >> $GITHUB_OUTPUT
+
+      - name: Create deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'staging' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**HTTP API:** ${{ steps.stack-outputs.outputs.http_api_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**WebSocket API:** ${{ steps.stack-outputs.outputs.ws_api_url }}" >> $GITHUB_STEP_SUMMARY
+
+  smoke-test:
+    name: Smoke Tests
+    needs: deploy-infrastructure
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Health Check - HTTP API
+        run: |
+          HTTP_URL="${{ needs.deploy-infrastructure.outputs.http_api_url }}"
+          if [ -n "$HTTP_URL" ]; then
+            curl -f "$HTTP_URL/health" || echo "Health endpoint not configured"
+          fi
+
+      - name: Create Trip Test
+        run: |
+          HTTP_URL="${{ needs.deploy-infrastructure.outputs.http_api_url }}"
+          if [ -n "$HTTP_URL" ]; then
+            response=$(curl -s -X POST "$HTTP_URL/trips" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "tripName": "CI Test Trip",
+                "origin": {"lat": 40.7128, "lng": -74.006, "name": "NYC"},
+                "destination": {"lat": 34.0522, "lng": -118.2437, "name": "LA"},
+                "startDate": "2024-08-01",
+                "endDate": "2024-08-10",
+                "tripType": "solo"
+              }')
+            echo "Response: $response"
+            echo "$response" | jq -e '.trip.tripId' > /dev/null
+          fi
+
+  notify:
+    name: Notify
+    needs: [deploy-infrastructure, smoke-test]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Notify Slack on Success
+        if: ${{ needs.smoke-test.result == 'success' }}
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "✅ Trippy deployment successful!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ *Trippy Deployment Successful*\n\nEnvironment: `${{ github.event.inputs.environment || 'staging' }}`\nCommit: `${{ github.sha }}`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+      - name: Notify Slack on Failure
+        if: ${{ needs.smoke-test.result == 'failure' || needs.deploy-infrastructure.result == 'failure' }}
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "❌ Trippy deployment failed!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "❌ *Trippy Deployment Failed*\n\nEnvironment: `${{ github.event.inputs.environment || 'staging' }}`\nCommit: `${{ github.sha }}`\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
