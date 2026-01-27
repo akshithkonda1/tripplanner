@@ -69,6 +69,12 @@ export class TrippyBackendStack extends cdk.Stack {
       REDIS_ENDPOINT: redisCluster.attrRedisEndpointAddress
     };
 
+    // Common bundling configuration for local esbuild (no Docker)
+    const bundlingConfig = {
+      forceDockerBundling: false,
+      externalModules: ['@aws-sdk/*', '@anthropic-ai/sdk', 'axios', 'cheerio'],
+    };
+
     // Chat Handler Lambda
     const chatHandler = new nodejs.NodejsFunction(this, 'ChatHandler', {
       entry: path.join(__dirname, '../../backend/src/lambdas/chatHandler.ts'),
@@ -79,7 +85,8 @@ export class TrippyBackendStack extends cdk.Stack {
       environment: lambdaEnvironment,
       layers: [dependenciesLayer],
       vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      bundling: bundlingConfig
     });
 
     // Trip Planner Lambda
@@ -90,7 +97,8 @@ export class TrippyBackendStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(60),
       memorySize: 1024,
       environment: lambdaEnvironment,
-      layers: [dependenciesLayer]
+      layers: [dependenciesLayer],
+      bundling: bundlingConfig
     });
 
     // Trip Management Lambdas
@@ -98,14 +106,16 @@ export class TrippyBackendStack extends cdk.Stack {
       entry: path.join(__dirname, '../../backend/src/lambdas/tripManagement.ts'),
       handler: 'createTrip',
       runtime: lambda.Runtime.NODEJS_20_X,
-      environment: lambdaEnvironment
+      environment: lambdaEnvironment,
+      bundling: bundlingConfig
     });
 
     const getTrip = new nodejs.NodejsFunction(this, 'GetTrip', {
       entry: path.join(__dirname, '../../backend/src/lambdas/tripManagement.ts'),
       handler: 'getTrip',
       runtime: lambda.Runtime.NODEJS_20_X,
-      environment: lambdaEnvironment
+      environment: lambdaEnvironment,
+      bundling: bundlingConfig
     });
 
     // Connection Handlers
@@ -113,14 +123,16 @@ export class TrippyBackendStack extends cdk.Stack {
       entry: path.join(__dirname, '../../backend/src/lambdas/connectionHandler.ts'),
       handler: 'connectHandler',
       runtime: lambda.Runtime.NODEJS_20_X,
-      environment: lambdaEnvironment
+      environment: lambdaEnvironment,
+      bundling: bundlingConfig
     });
 
     const disconnectHandler = new nodejs.NodejsFunction(this, 'DisconnectHandler', {
       entry: path.join(__dirname, '../../backend/src/lambdas/connectionHandler.ts'),
       handler: 'disconnectHandler',
       runtime: lambda.Runtime.NODEJS_20_X,
-      environment: lambdaEnvironment
+      environment: lambdaEnvironment,
+      bundling: bundlingConfig
     });
 
     // Grant DynamoDB permissions
