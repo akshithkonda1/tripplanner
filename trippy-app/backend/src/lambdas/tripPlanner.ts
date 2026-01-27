@@ -1,12 +1,8 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import Anthropic from '@anthropic-ai/sdk';
+import { bedrockService } from '../services/bedrockService';
 import { getWeatherForecast } from '../services/weatherService';
 import { getGasPrices, getEVCharging } from '../services/fuelService';
 import { generateBookingLinks } from '../services/bookingService';
-
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY!
-});
 
 interface Location {
   lat: number;
@@ -78,8 +74,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const gasPrices = await getGasPrices(request.origin, request.destination);
     const evCharging = await getEVCharging(request.origin, request.destination);
 
-    // Step 3: Use Claude Opus to plan the trip
-    const itinerary = await planTripWithClaude(request, weather, gasPrices, evCharging);
+    // Step 3: Use Bedrock Claude to plan the trip
+    const itinerary = await planTripWithBedrock(request, weather, gasPrices, evCharging);
 
     // Step 4: Add booking links
     const itineraryWithLinks = await addBookingLinks(itinerary);
@@ -106,7 +102,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 };
 
-async function planTripWithClaude(
+async function planTripWithBedrock(
   request: TripPlanRequest,
   weather: any,
   gasPrices: any,
@@ -162,23 +158,24 @@ Format your response as structured JSON with this schema:
   ]
 }`;
 
-  const response = await anthropic.messages.create({
-    model: 'claude-opus-4-20250514',
-    max_tokens: 4000,
-    messages: [{ role: 'user', content: prompt }]
-  });
+  const response = await bedrockService.planWithOpus(
+    [{ role: 'user', content: prompt }],
+    undefined,
+    4000
+  );
 
-  const content = response.content[0];
-  if (content.type === 'text') {
-    // Extract JSON from response
-    const jsonMatch = content.text.match(/```json\n([\s\S]*?)\n```/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[1]);
-    }
-    return JSON.parse(content.text);
+  // Extract JSON from response
+  const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[1]);
   }
 
-  throw new Error('Failed to parse Claude response');
+  // Try parsing the whole response if no code block
+  try {
+    return JSON.parse(response);
+  } catch {
+    throw new Error('Failed to parse Claude response as JSON');
+  }
 }
 
 async function addBookingLinks(itinerary: Itinerary): Promise<Itinerary> {

@@ -50,11 +50,11 @@ export class TrippyBackendStack extends cdk.Stack {
       vpcSecurityGroupIds: [securityGroup.securityGroupId]
     });
 
-    // Lambda Layer with dependencies
+    // Lambda Layer with dependencies (no Anthropic SDK needed)
     const dependenciesLayer = new lambda.LayerVersion(this, 'DependenciesLayer', {
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/layers')),
       compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
-      description: 'Anthropic SDK and other dependencies'
+      description: 'AWS SDK and other dependencies',
     });
 
     // Environment variables for all Lambdas
@@ -64,15 +64,29 @@ export class TrippyBackendStack extends cdk.Stack {
       ITINERARY_TABLE: props.tables.itinerary.tableName,
       CONNECTIONS_TABLE: props.tables.connections.tableName,
       USERS_TABLE: props.tables.users.tableName,
-      CLAUDE_API_KEY: process.env.CLAUDE_API_KEY || '',
       OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY || '',
-      REDIS_ENDPOINT: redisCluster.attrRedisEndpointAddress
+      REDIS_ENDPOINT: redisCluster.attrRedisEndpointAddress,
+      AWS_REGION: this.region,
     };
+
+    // Bedrock IAM Policy
+    const bedrockPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'bedrock:InvokeModel',
+        'bedrock:InvokeModelWithResponseStream',
+      ],
+      resources: [
+        `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0`,
+        `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-opus-20240229-v1:0`,
+        `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0`,
+      ],
+    });
 
     // Common bundling configuration for local esbuild (no Docker)
     const bundlingConfig = {
       forceDockerBundling: false,
-      externalModules: ['@aws-sdk/*', '@anthropic-ai/sdk', 'axios', 'cheerio'],
+      externalModules: ['@aws-sdk/*', 'axios', 'cheerio'],
     };
 
     // Chat Handler Lambda
@@ -89,6 +103,9 @@ export class TrippyBackendStack extends cdk.Stack {
       bundling: bundlingConfig
     });
 
+    // Add Bedrock permissions to Chat Handler
+    chatHandler.addToRolePolicy(bedrockPolicy);
+
     // Trip Planner Lambda
     const tripPlanner = new nodejs.NodejsFunction(this, 'TripPlanner', {
       entry: path.join(__dirname, '../../backend/src/lambdas/tripPlanner.ts'),
@@ -100,6 +117,9 @@ export class TrippyBackendStack extends cdk.Stack {
       layers: [dependenciesLayer],
       bundling: bundlingConfig
     });
+
+    // Add Bedrock permissions to Trip Planner
+    tripPlanner.addToRolePolicy(bedrockPolicy);
 
     // Trip Management Lambdas
     const createTrip = new nodejs.NodejsFunction(this, 'CreateTrip', {
@@ -227,6 +247,11 @@ export class TrippyBackendStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'HttpApiUrl', {
       value: httpApi.apiEndpoint,
       exportName: 'TrippyHttpApiUrl'
+    });
+
+    new cdk.CfnOutput(this, 'BedrockRegion', {
+      value: this.region,
+      description: 'AWS region for Bedrock',
     });
   }
 }

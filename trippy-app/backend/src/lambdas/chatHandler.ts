@@ -2,15 +2,11 @@ import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
-import Anthropic from '@anthropic-ai/sdk';
+import { bedrockService } from '../services/bedrockService';
 import { v4 as uuidv4 } from 'uuid';
 
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
-
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY!
-});
 
 interface ChatMessage {
   tripId: string;
@@ -61,11 +57,11 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       let samResponse: string;
 
       if (needsPlanning) {
-        // Use Claude Opus for complex planning
-        samResponse = await claudeOpusPlanning(message, context);
+        // Use Bedrock Claude for complex planning
+        samResponse = await claudeBedrockPlanning(message, context);
       } else {
-        // Use Claude Sonnet for quick chat
-        samResponse = await claudeSonnetChat(message, context);
+        // Use Bedrock Claude Sonnet for quick chat
+        samResponse = await claudeBedrockChat(message, context);
       }
 
       // Save Sam's response
@@ -154,36 +150,30 @@ async function determineIntent(message: string): Promise<boolean> {
   );
 }
 
-async function claudeSonnetChat(message: string, context: TripContext): Promise<string> {
+async function claudeBedrockChat(
+  message: string,
+  context: TripContext
+): Promise<string> {
   const systemPrompt = buildChatSystemPrompt(context);
+  const messages = [
+    ...formatConversationHistory(context.messages),
+    { role: 'user' as const, content: message },
+  ];
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1000,
-    system: systemPrompt,
-    messages: [
-      ...formatConversationHistory(context.messages),
-      { role: 'user', content: message }
-    ]
-  });
-
-  return response.content[0].type === 'text' ? response.content[0].text : '';
+  return bedrockService.chatWithSonnet(messages, systemPrompt, 1000);
 }
 
-async function claudeOpusPlanning(message: string, context: TripContext): Promise<string> {
+async function claudeBedrockPlanning(
+  message: string,
+  context: TripContext
+): Promise<string> {
   const systemPrompt = buildPlanningSystemPrompt(context);
+  const messages = [
+    ...formatConversationHistory(context.messages),
+    { role: 'user' as const, content: message },
+  ];
 
-  const response = await anthropic.messages.create({
-    model: 'claude-opus-4-20250514',
-    max_tokens: 4000,
-    system: systemPrompt,
-    messages: [
-      ...formatConversationHistory(context.messages),
-      { role: 'user', content: message }
-    ]
-  });
-
-  return response.content[0].type === 'text' ? response.content[0].text : '';
+  return bedrockService.planWithOpus(messages, systemPrompt, 4000);
 }
 
 function buildChatSystemPrompt(context: TripContext): string {
