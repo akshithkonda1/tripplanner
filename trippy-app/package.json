@@ -1,0 +1,21 @@
+{
+  "name": "trippy-app",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "mobile"
+  ],
+  "scripts": {
+    "backend:install": "cd backend && npm install",
+    "mobile:install": "cd mobile && npm install",
+    "mobile:ios": "cd mobile && npx react-native run-ios",
+    "mobile:android": "cd mobile && npx react-native run-android",
+    "deploy:backend": "cd infrastructure && cdk deploy",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
