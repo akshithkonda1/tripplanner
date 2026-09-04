@@ -66,7 +66,6 @@ export class TrippyBackendStack extends cdk.Stack {
       USERS_TABLE: props.tables.users.tableName,
       OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY || '',
       REDIS_ENDPOINT: redisCluster.attrRedisEndpointAddress,
-      AWS_REGION: this.region,
     };
 
     // Bedrock IAM Policy
