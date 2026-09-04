@@ -22,6 +22,10 @@ Create a new trip
   "startDate": "2024-07-01",
   "endDate": "2024-07-10",
   "tripType": "family",
+  "travelMode": "road",
+  "datesFlexible": false,
+  "legs": [],
+  "homeCurrency": "USD",
   "preferences": {
     "budget": 2000,
     "interests": ["food", "nature"],
@@ -37,6 +41,7 @@ Create a new trip
   "trip": {
     "tripId": "uuid-here",
     "tripName": "Summer Road Trip",
+    "travelMode": "road",
     "status": "planning",
     "createdAt": 1234567890
   }
@@ -57,6 +62,7 @@ Get trip details
     "startDate": "2024-07-01",
     "endDate": "2024-07-10",
     "status": "planning",
+    "travelMode": "road",
     "participants": ["user-1", "user-2"]
   }
 }
@@ -142,6 +148,16 @@ wss://your-ws-api.execute-api.us-east-1.amazonaws.com/production?tripId={tripId}
   "timestamp": 1234567890
 }
 ```
+
+`travelMode` is `road` | `flight` | `hybrid` and defaults to `road`. Flight Mode also uses:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/flights/search` | Cheapest-first fare search |
+| POST | `/trips/{tripId}/flights` | Attach a fare to a leg |
+| GET | `/flights/status/{flightNumber}` | Live status for the active leg |
+
+`POST /trips/{tripId}/plan` branches Sam's Bedrock prompt on `travelMode`.
 
 ## Error Responses
 

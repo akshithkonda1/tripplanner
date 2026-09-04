@@ -13,18 +13,25 @@ export const createTrip: APIGatewayProxyHandler = async (event) => {
     const tripId = uuidv4();
     const userId = event.requestContext.authorizer?.claims?.sub || 'anonymous';
 
+    const travelMode = normalizeTravelMode(body.travelMode);
+
     const trip = {
       PK: `TRIP#${tripId}`,
       SK: 'METADATA',
       tripId,
       tripName: body.tripName,
+      travelMode,
       origin: body.origin,
       destination: body.destination,
+      legs: Array.isArray(body.legs) ? body.legs : [],
       startDate: body.startDate,
       endDate: body.endDate,
+      datesFlexible: Boolean(body.datesFlexible) && travelMode !== 'road',
       tripType: body.tripType || 'solo',
+      homeCurrency: body.homeCurrency || 'USD',
       status: 'planning',
       createdBy: userId,
+      userId,
       participants: [userId],
       preferences: body.preferences || {},
       createdAt: Date.now(),
@@ -165,6 +172,13 @@ export const addParticipant: APIGatewayProxyHandler = async (event) => {
     };
   }
 };
+
+function normalizeTravelMode(value: unknown): 'road' | 'flight' | 'hybrid' {
+  if (value === 'flight' || value === 'hybrid' || value === 'road') {
+    return value;
+  }
+  return 'road';
+}
 
 function corsHeaders() {
   return {
