@@ -1,19 +1,23 @@
-# Trippy - AI-Powered Road Trip Planner
+# AWS backend (and the React Native prototype)
 
-Sam-powered road trip planning with real-time collaboration.
+This package is **cloud + AI** for Trippy: Lambda, DynamoDB, API Gateway, and Sam on Amazon Bedrock.
 
-## Architecture
-- **Backend**: AWS Lambda (Serverless)
-- **Mobile**: React Native
-- **AI**: Claude (Sonnet 4.5 + Opus 4.5)
-- **Maps**: Apple Maps (native)
-- **Database**: DynamoDB
+Native apps live at the repo root:
 
-## Structure
-- `/backend` - Lambda functions and API
-- `/mobile` - React Native app
-- `/infrastructure` - AWS CDK/Terraform
-- `/docs` - Documentation
+- [`ios/`](../ios) — Swift / SwiftUI
+- [`android/`](../android) — Kotlin / Compose
+- Product plan: [`../README.md`](../README.md)
 
-## Setup
-See individual README files in each directory.
+`mobile/` is the older React Native client. New work goes in the native apps.
+
+```
+backend/          Lambda functions
+infrastructure/  AWS CDK
+mobile/          legacy React Native
+docs/            HTTP + WebSocket API
+```
+
+```bash
+cd backend && npm install && npm test
+cd ../infrastructure && npm install && npx cdk deploy
+```
