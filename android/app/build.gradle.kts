@@ -40,6 +40,7 @@ android {
 
 dependencies {
     implementation(project(":domain"))
+    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

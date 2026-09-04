@@ -49,6 +49,7 @@ struct HomeView: View {
             .sheet(isPresented: $showingCreate) {
                 CreateTripView()
             }
+            .task { await store.refresh() }
         }
     }
 

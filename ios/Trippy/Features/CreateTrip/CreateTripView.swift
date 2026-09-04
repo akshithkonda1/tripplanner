@@ -138,7 +138,9 @@ struct CreateTripView: View {
             status: .planning,
             participants: [Participant(id: "you", name: "You")]
         )
-        store.add(trip)
-        dismiss()
+        Task {
+            await store.create(trip)
+            dismiss()
+        }
     }
 }

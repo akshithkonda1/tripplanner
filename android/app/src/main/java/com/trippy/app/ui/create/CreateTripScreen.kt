@@ -24,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.trippy.app.data.TripStore
 import com.trippy.app.ui.theme.Ink
 import com.trippy.app.ui.theme.Muted
 import com.trippy.domain.GeoLocation
@@ -38,7 +37,7 @@ import com.trippy.domain.TripType
 import java.util.UUID
 
 @Composable
-fun CreateTripScreen(store: TripStore, onDone: () -> Unit) {
+fun CreateTripScreen(onCreate: (Trip) -> Unit, onDone: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf(TravelMode.ROAD) }
     var origin by remember { mutableStateOf("") }
@@ -127,8 +126,7 @@ fun CreateTripScreen(store: TripStore, onDone: () -> Unit) {
 
         Button(
             onClick = {
-                store.add(buildTrip(name, mode, origin, destination, extraCities, start, end, tripType, budget, flexible))
-                onDone()
+                onCreate(buildTrip(name, mode, origin, destination, extraCities, start, end, tripType, budget, flexible))
             },
             enabled = canSave,
             modifier = Modifier.fillMaxWidth(),

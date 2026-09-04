@@ -31,8 +31,9 @@ The React Native client under `trippy-app/mobile` is the prototype. Native Swift
 
 ```
 ios/                 Swift / SwiftUI app
-android/             Kotlin / Compose app  ( :app UI, :domain models )
-trippy-app/backend   AWS Lambda (trips, Sam, chat)
+android/             Kotlin / Compose app  ( :app UI, :domain models + AWS API client )
+shared/api           JSON fixtures both clients and Lambdas agree on
+trippy-app/backend   AWS Lambda (trips, Sam on Bedrock, chat)
 trippy-app/infrastructure   AWS CDK
 trippy-app/docs      API notes
 ```
@@ -144,7 +145,7 @@ Foundation: Lambda + DynamoDB + HTTP API + WebSocket API. `travelMode` defaults 
 | Endpoint | Purpose |
 |----------|---------|
 | `POST /trips` | Create trip (`travelMode`, `legs[]`, `datesFlexible`) |
-| `GET /trips` | List the signed-in user's trips |
+| `GET /trips` | List the signed-in user's trips (`getUserTrips`) |
 | `GET /trips/{id}` | Trip detail |
 | `POST /trips/{id}/plan` | Sam generates an itinerary (prompt branches on mode) |
 | `GET /flights/search` | Cheapest-first fare search |

@@ -89,7 +89,9 @@ fun TrippyApp(viewModel: TrippyViewModel = viewModel()) {
             composable(Tab.Profile.route) { ProfileScreen() }
             composable("create") {
                 CreateTripScreen(
-                    store = viewModel.store,
+                    onCreate = { trip ->
+                        viewModel.createTrip(trip) { nav.popBackStack() }
+                    },
                     onDone = { nav.popBackStack() },
                 )
             }

@@ -42,6 +42,34 @@ describe('Trip Management Lambda Functions', () => {
       expect(body.trip.legs).toEqual([]);
     });
 
+    it('should accept the shared Flight Mode create-trip fixture', async () => {
+      ddbMock.on(PutCommand).resolves({});
+      const { readFileSync } = require('fs');
+      const { join } = require('path');
+      const fixturePath = join(
+        process.cwd(),
+        '..',
+        '..',
+        'shared',
+        'api',
+        'create-trip-request.flight.json'
+      );
+      const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'));
+
+      const event = {
+        body: JSON.stringify(fixture),
+        requestContext: { authorizer: { claims: { sub: 'user-123' } } }
+      } as any;
+
+      const result = await createTrip(event, {} as any, () => {});
+      expect(result?.statusCode).toBe(201);
+      const body = JSON.parse(result?.body || '{}');
+      expect(body.trip.travelMode).toBe('flight');
+      expect(body.trip.tripName).toBe('Two weeks in Japan');
+      expect(body.trip.datesFlexible).toBe(true);
+      expect(body.trip.legs[0].transport).toBe('flight');
+    });
+
     it('should persist flight mode and flexible dates', async () => {
       ddbMock.on(PutCommand).resolves({});
 

@@ -48,6 +48,23 @@ Create a new trip
 }
 ```
 
+### GET /trips
+List the signed-in user's trips. Each item includes `travelMode` (`road` | `flight` | `hybrid`).
+
+**Response:**
+```json
+{
+  "trips": [
+    {
+      "tripId": "uuid-here",
+      "tripName": "Two weeks in Japan",
+      "travelMode": "flight",
+      "status": "planning"
+    }
+  ]
+}
+```
+
 ### GET /trips/{tripId}
 Get trip details
 
