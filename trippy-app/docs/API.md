@@ -174,7 +174,7 @@ wss://your-ws-api.execute-api.us-east-1.amazonaws.com/production?tripId={tripId}
 | POST | `/trips/{tripId}/flights` | Attach a fare to a leg |
 | GET | `/flights/status/{flightNumber}` | Live status for the active leg |
 
-`POST /trips/{tripId}/plan` branches Sam's Bedrock prompt on `travelMode`.
+Those flight-search routes are **not** being built. Flight Mode is tickets you log yourself. Sam still plans on Bedrock / on-device.
 
 ## Error Responses
 
