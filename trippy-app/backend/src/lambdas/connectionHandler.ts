@@ -7,7 +7,9 @@ const docClient = DynamoDBDocumentClient.from(ddbClient);
 
 export const connectHandler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const connectionId = event.requestContext.connectionId;
-  const { tripId, userId } = event.queryStringParameters || {};
+  const { tripId, userId } =
+    (event as { queryStringParameters?: Record<string, string | undefined> })
+      .queryStringParameters || {};
 
   if (!tripId || !userId) {
     return { statusCode: 400, body: 'Missing tripId or userId' };
