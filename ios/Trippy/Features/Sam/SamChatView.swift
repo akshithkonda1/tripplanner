@@ -1,36 +1,11 @@
 import SwiftUI
 
 struct SamChatView: View {
-    let trip: Trip?
+    let tripId: String?
+    @EnvironmentObject private var store: TripStore
+    @EnvironmentObject private var session: AuthSession
     @State private var draft = ""
-    @State private var messages: [ChatMessage]
-
-    init(trip: Trip?) {
-        self.trip = trip
-        let greeting: String
-        if let trip {
-            switch trip.travelMode {
-            case .road:
-                greeting = "I'm Sam. Want scenic miles, cheap gas, or a looser pace on \(trip.name)?"
-            case .flight:
-                greeting = "I'm Sam. \(trip.name) is a longer trip — I can sketch city stays and hunt cheaper fares."
-            case .hybrid:
-                greeting = "I'm Sam. Fly, drive, fly — I'll treat each leg of \(trip.name) by how you actually move."
-            }
-        } else {
-            greeting = "I'm Sam, your trip co-pilot. Road, flight, or hybrid — tell me where you want to go."
-        }
-        _messages = State(initialValue: [
-            ChatMessage(
-                id: UUID().uuidString,
-                tripId: trip?.id ?? "inbox",
-                userId: "SAM",
-                message: greeting,
-                timestamp: Date(),
-                type: .samResponse
-            )
-        ])
-    }
+    @State private var inbox: [ChatMessage] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,8 +33,35 @@ struct SamChatView: View {
             .background(Color.white.opacity(0.9))
         }
         .background(TrippyTheme.cream.ignoresSafeArea())
-        .navigationTitle(trip == nil ? "Sam" : "Chat")
+        .navigationTitle(tripId == nil ? "Sam" : "Chat")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var messages: [ChatMessage] {
+        if let tripId, let workspace = store.workspace(id: tripId) {
+            if workspace.messages.isEmpty {
+                return [greeting(for: workspace.trip)]
+            }
+            return workspace.messages
+        }
+        return inbox.isEmpty ? [greeting(for: nil)] : inbox
+    }
+
+    private func greeting(for trip: Trip?) -> ChatMessage {
+        let text: String
+        if let trip {
+            switch trip.travelMode {
+            case .road:
+                text = "I'm Sam. Scenic miles and cheap gas math — no station API. What do you want on \(trip.name)?"
+            case .flight:
+                text = "I'm Sam. \(trip.name) is city stays. Log the ticket you already have; I don’t scrape fares."
+            case .hybrid:
+                text = "I'm Sam. Fly the long hops, drive the middle. One budget for \(trip.name)."
+            }
+        } else {
+            text = "I'm Sam. Road, flight, or hybrid — all on this phone, Cognito for your account, Bedrock when you plug AWS in."
+        }
+        return ChatMessage(id: "greet", tripId: trip?.id ?? "inbox", userId: "SAM", message: text, timestamp: Date(), type: .samResponse)
     }
 
     private func bubble(_ message: ChatMessage) -> some View {
@@ -75,38 +77,15 @@ struct SamChatView: View {
     private func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        messages.append(
-            ChatMessage(
-                id: UUID().uuidString,
-                tripId: trip?.id ?? "inbox",
-                userId: "you",
-                message: text,
-                timestamp: Date(),
-                type: .user
-            )
-        )
         draft = ""
-        messages.append(
-            ChatMessage(
-                id: UUID().uuidString,
-                tripId: trip?.id ?? "inbox",
-                userId: "SAM",
-                message: reply(to: text),
-                timestamp: Date(),
-                type: .samResponse
-            )
-        )
-    }
-
-    private func reply(to text: String) -> String {
-        let mode = trip?.travelMode ?? .road
-        switch mode {
-        case .flight:
-            return "Got it — “\(text)”. When Bedrock is wired I’ll search fares cheapest-first and group days by city stay."
-        case .hybrid:
-            return "Got it — “\(text)”. I’ll keep air legs and drive legs on the same itinerary so the budget stays one number."
-        case .road:
-            return "Got it — “\(text)”. When Bedrock is wired I’ll sketch driving days, cheap fuel, and places to sleep."
+        Task {
+            if let tripId, let workspace = store.workspace(id: tripId) {
+                _ = await store.askSam(workspace: workspace, text: text, idToken: session.idToken)
+            } else {
+                if inbox.isEmpty { inbox = [greeting(for: nil)] }
+                inbox.append(ChatMessage(id: UUID().uuidString, tripId: "inbox", userId: "you", message: text, timestamp: Date(), type: .user))
+                inbox.append(ChatMessage(id: UUID().uuidString, tripId: "inbox", userId: "SAM", message: "Open a trip and I’ll sketch days there. I don’t call fare or hotel APIs.", timestamp: Date(), type: .samResponse))
+            }
         }
     }
 }

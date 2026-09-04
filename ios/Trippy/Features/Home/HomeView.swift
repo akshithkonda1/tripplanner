@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var store: TripStore
+    @EnvironmentObject private var session: AuthSession
     @State private var showingCreate = false
 
     var body: some View {
@@ -14,12 +15,12 @@ struct HomeView: View {
 
                     modeFilter
 
-                    if store.visibleTrips.isEmpty {
+                    if store.visible.isEmpty {
                         emptyState
                     } else {
-                        ForEach(store.visibleTrips) { trip in
-                            NavigationLink(value: trip.id) {
-                                TripCard(trip: trip)
+                        ForEach(store.visible, id: \.trip.id) { workspace in
+                            NavigationLink(value: workspace.trip.id) {
+                                TripCard(trip: workspace.trip)
                             }
                             .buttonStyle(.plain)
                         }
@@ -42,14 +43,12 @@ struct HomeView: View {
                 }
             }
             .navigationDestination(for: String.self) { id in
-                if let trip = store.trip(id: id) {
-                    TripDetailView(trip: trip)
-                }
+                TripDetailView(tripId: id)
             }
             .sheet(isPresented: $showingCreate) {
                 CreateTripView()
             }
-            .task { await store.refresh() }
+            .task { await store.refresh(idToken: session.idToken) }
         }
     }
 
@@ -85,7 +84,7 @@ struct HomeView: View {
         VStack(spacing: 8) {
             Text("No trips in this mode yet.")
                 .font(.headline)
-            Text("Create a Road, Flight, or Hybrid trip to get started.")
+            Text("Create a Road, Flight, or Hybrid trip. Flights you log yourself — we don’t call a fare API.")
                 .font(.subheadline)
                 .foregroundStyle(TrippyTheme.muted)
                 .multilineTextAlignment(.center)

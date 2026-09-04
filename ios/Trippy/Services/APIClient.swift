@@ -1,7 +1,6 @@
 import Foundation
 
 struct APIConfiguration {
-    /// Replace with the CDK HTTP API URL when you deploy.
     static var httpBaseURL = ProcessInfo.processInfo.environment["HTTP_API_URL"]
         ?? "https://your-api.execute-api.us-east-1.amazonaws.com"
     static var webSocketURL = ProcessInfo.processInfo.environment["WS_API_URL"]
@@ -14,60 +13,57 @@ struct APIConfiguration {
 
 enum APIError: Error {
     case notConfigured
+    case unauthorized
     case badResponse
 }
 
-/// Talks to the AWS HTTP API. Until a URL is configured the store keeps using sample trips.
 actor APIClient {
     static let shared = APIClient()
 
-    func createTrip(_ request: CreateTripRequest) async throws -> Trip {
-        try await post("/trips", body: request, decode: Envelope<Trip>.self).trip
+    func createTrip(_ request: CreateTripRequest, idToken: String?) async throws -> Trip {
+        try await post("/trips", body: request, decode: Envelope<Trip>.self, idToken: idToken).trip
     }
 
-    func listTrips() async throws -> [Trip] {
-        try await get("/trips", decode: TripList.self).trips
+    func listTrips(idToken: String?) async throws -> [Trip] {
+        try await get("/trips", decode: TripList.self, idToken: idToken).trips
     }
 
-    func getTrip(id: String) async throws -> Trip {
-        try await get("/trips/\(id)", decode: Envelope<Trip>.self).trip
-    }
-
-    func planTrip(id: String, message: String, travelMode: TravelMode) async throws -> Data {
+    func planTrip(id: String, message: String, travelMode: TravelMode, idToken: String?) async throws -> Data {
         struct Body: Encodable {
             var message: String
             var travelMode: TravelMode
         }
-        return try await postRaw("/trips/\(id)/plan", body: Body(message: message, travelMode: travelMode))
+        return try await postRaw("/trips/\(id)/plan", body: Body(message: message, travelMode: travelMode), idToken: idToken)
     }
 
     private struct Envelope<T: Decodable>: Decodable { var trip: T }
     private struct TripList: Decodable { var trips: [Trip] }
 
-    private func get<T: Decodable>(_ path: String, decode: T.Type) async throws -> T {
-        try await send(path, method: "GET", body: nil as Data?, decode: decode)
+    private func get<T: Decodable>(_ path: String, decode: T.Type, idToken: String?) async throws -> T {
+        try await send(path, method: "GET", body: nil, decode: decode, idToken: idToken)
     }
 
-    private func post<Body: Encodable, T: Decodable>(_ path: String, body: Body, decode: T.Type) async throws -> T {
+    private func post<Body: Encodable, T: Decodable>(_ path: String, body: Body, decode: T.Type, idToken: String?) async throws -> T {
         let data = try JSONEncoder().encode(body)
-        return try await send(path, method: "POST", body: data, decode: decode)
+        return try await send(path, method: "POST", body: data, decode: decode, idToken: idToken)
     }
 
-    private func postRaw<Body: Encodable>(_ path: String, body: Body) async throws -> Data {
-        let data = try JSONEncoder().encode(body)
-        return try await sendRaw(path, method: "POST", body: data)
+    private func postRaw<Body: Encodable>(_ path: String, body: Body, idToken: String?) async throws -> Data {
+        try await sendRaw(path, method: "POST", body: try JSONEncoder().encode(body), idToken: idToken)
     }
 
-    private func send<T: Decodable>(_ path: String, method: String, body: Data?, decode: T.Type) async throws -> T {
-        let data = try await sendRaw(path, method: method, body: body)
+    private func send<T: Decodable>(_ path: String, method: String, body: Data?, decode: T.Type, idToken: String?) async throws -> T {
+        let data = try await sendRaw(path, method: method, body: body, idToken: idToken)
         return try JSONDecoder().decode(T.self, from: data)
     }
 
-    private func sendRaw(_ path: String, method: String, body: Data?) async throws -> Data {
+    private func sendRaw(_ path: String, method: String, body: Data?, idToken: String?) async throws -> Data {
         guard APIConfiguration.isConfigured else { throw APIError.notConfigured }
+        guard let idToken, !idToken.isEmpty else { throw APIError.unauthorized }
         var req = URLRequest(url: URL(string: APIConfiguration.httpBaseURL + path)!)
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue("Bearer \(idToken)", forHTTPHeaderField: "Authorization")
         if let body {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.httpBody = body

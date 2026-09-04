@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CreateTripView: View {
     @EnvironmentObject private var store: TripStore
+    @EnvironmentObject private var session: AuthSession
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
@@ -15,6 +16,7 @@ struct CreateTripView: View {
     @State private var tripType: TripType = .solo
     @State private var budgetText = ""
     @State private var datesFlexible = false
+    @State private var airportQuery = ""
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty
@@ -36,15 +38,40 @@ struct CreateTripView: View {
                     Text(mode.subtitle)
                         .font(.footnote)
                         .foregroundStyle(TrippyTheme.muted)
+                    if mode != .road {
+                        Text("No fare API — you’ll type the real flight later. Airports below are a bundled list on the phone.")
+                            .font(.footnote)
+                            .foregroundStyle(TrippyTheme.muted)
+                    }
                 }
 
                 Section("The trip") {
                     TextField("Trip name", text: $name)
-                    TextField(mode == .flight ? "From (airport or city)" : "From", text: $origin)
-                    TextField(mode == .flight ? "To (airport or city)" : "To", text: $destination)
+                    TextField(mode == .road ? "From" : "From (city or IATA)", text: $origin)
+                    TextField(mode == .road ? "To" : "To (city or IATA)", text: $destination)
                 }
 
                 if mode != .road {
+                    Section("Bundled airports") {
+                        TextField("Search SFO, Lisbon, Narita…", text: $airportQuery)
+                        ForEach(AirportDirectory.search(airportQuery).prefix(8)) { airport in
+                            Button {
+                                if origin.isEmpty {
+                                    origin = "\(airport.iata) \(airport.city)"
+                                } else if destination.isEmpty {
+                                    destination = "\(airport.iata) \(airport.city)"
+                                } else {
+                                    extraCities.append("\(airport.iata) \(airport.city)")
+                                }
+                            } label: {
+                                VStack(alignment: .leading) {
+                                    Text("\(airport.iata) · \(airport.city)")
+                                    Text(airport.name).font(.caption).foregroundStyle(TrippyTheme.muted)
+                                }
+                            }
+                        }
+                    }
+
                     Section("More cities") {
                         ForEach(extraCities, id: \.self) { city in
                             Text(city)
@@ -60,7 +87,7 @@ struct CreateTripView: View {
                                 newCity = ""
                             }
                         }
-                        Toggle("Flexible dates (±3 days)", isOn: $datesFlexible)
+                        Toggle("Flexible dates (±3 days) for your own search", isOn: $datesFlexible)
                     }
                 }
 
@@ -97,18 +124,11 @@ struct CreateTripView: View {
     }
 
     private func save() {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd"
-
         let from = Location(lat: 0, lng: 0, name: origin.trimmingCharacters(in: .whitespaces))
         let to = Location(lat: 0, lng: 0, name: destination.trimmingCharacters(in: .whitespaces))
         let transport: TransportType = mode == .road ? .drive : .flight
 
-        var legs = [
-            TripLeg(id: UUID().uuidString, transport: transport, from: from, to: to)
-        ]
+        var legs = [TripLeg(id: UUID().uuidString, transport: transport, from: from, to: to)]
         var previous = to
         for city in extraCities {
             let next = Location(lat: 0, lng: 0, name: city)
@@ -130,16 +150,16 @@ struct CreateTripView: View {
             origin: from,
             destination: extraCities.isEmpty ? to : previous,
             legs: legs,
-            startDate: formatter.string(from: startDate),
-            endDate: formatter.string(from: endDate),
+            startDate: DateFormatters.iso.string(from: startDate),
+            endDate: DateFormatters.iso.string(from: endDate),
             datesFlexible: datesFlexible && mode != .road,
             tripType: tripType,
             budget: Decimal(string: budgetText),
             status: .planning,
-            participants: [Participant(id: "you", name: "You")]
+            participants: [Participant(id: "you", name: session.email)]
         )
         Task {
-            await store.create(trip)
+            await store.create(trip, idToken: session.idToken)
             dismiss()
         }
     }

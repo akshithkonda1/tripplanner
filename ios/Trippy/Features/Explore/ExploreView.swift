@@ -4,15 +4,15 @@ struct ExploreView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("On the road") {
-                    Label("Cheap campsites along your route", systemImage: "tent")
-                    Label("Scenic pull-offs and free viewpoints", systemImage: "binoculars")
-                    Label("Lowest fuel this week", systemImage: "fuelpump")
+                Section("On the road (ideas, not a feed)") {
+                    Text("Look for city / county campgrounds — they’re often cheaper than apps that take a cut.")
+                    Text("Fill up when you see a price you like. We don’t pull live gas APIs.")
+                    Text("Download the offline MapKit area before you lose signal.")
                 }
                 Section("Longer trips") {
-                    Label("Error-fare style city hops", systemImage: "airplane")
-                    Label("Hostels with weekly rates", systemImage: "bed.double")
-                    Label("Night trains instead of a flight", systemImage: "tram")
+                    Text("Use the bundled airport list, then buy the ticket on the airline site you trust.")
+                    Text("Hostels and night trains: search yourself, then log the confirmation on the trip.")
+                    Text("Sam will pace city stays if you ask — still no fare API.")
                 }
             }
             .scrollContentBackground(.hidden)

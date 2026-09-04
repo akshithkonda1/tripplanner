@@ -193,10 +193,13 @@ Common HTTP status codes:
 
 ## Authentication
 
-All requests require a valid JWT token in the Authorization header:
+Amazon Cognito User Pool issues the JWT. The HTTP API authorizer expects:
+
 ```
-Authorization: Bearer <jwt-token>
+Authorization: Bearer <cognito-id-token>
 ```
+
+Guest mode on iOS does not call these routes.
 
 ## Rate Limits
 
