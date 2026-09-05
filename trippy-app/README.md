@@ -1,6 +1,10 @@
 # AWS backend (and the React Native prototype)
 
-This package is **cloud + AI** for Trippy: Lambda, DynamoDB, API Gateway, and Sam on Amazon Bedrock.
+This package is **cloud + AI** for Trippy: Lambda, DynamoDB, API Gateway, and Sam.
+
+Sam's AI provider is pluggable via the `AI_PROVIDER` env var:
+- `claude` (default) — Anthropic Claude on Amazon Bedrock (uses AWS IAM, no API key).
+- `grok` — xAI Grok via the OpenAI-compatible xAI API (set `GROK_API_KEY`).
 
 Native apps live at the repo root:
 

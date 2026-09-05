@@ -13,10 +13,10 @@ describe('Booking Service', () => {
         '2024-07-05'
       );
 
-      expect(result).toHaveProperty('Booking.com');
-      expect(result).toHaveProperty('Hotels.com');
-      expect(result).toHaveProperty('Airbnb');
-      expect(result).toHaveProperty('Expedia');
+      expect(result).toHaveProperty(['Booking.com']);
+      expect(result).toHaveProperty(['Hotels.com']);
+      expect(result).toHaveProperty(['Airbnb']);
+      expect(result).toHaveProperty(['Expedia']);
     });
 
     it('should encode address in URLs', async () => {

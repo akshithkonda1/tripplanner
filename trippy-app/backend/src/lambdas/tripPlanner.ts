@@ -1,5 +1,5 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import { bedrockService } from '../services/bedrockService';
+import { getAIProvider } from '../services/aiService';
 import { getWeatherForecast } from '../services/weatherService';
 import { getGasPrices, getEVCharging } from '../services/fuelService';
 import { generateBookingLinks } from '../services/bookingService';
@@ -87,8 +87,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       ? null
       : await getEVCharging(request.origin, request.destination);
 
-    // Step 3: Use Bedrock Claude to plan the trip
-    const itinerary = await planTripWithBedrock(request, weather, gasPrices, evCharging, travelMode);
+    // Step 3: Use the configured AI provider to plan the trip
+    const itinerary = await planTripWithAI(request, weather, gasPrices, evCharging, travelMode);
 
     // Step 4: Add booking links
     const itineraryWithLinks = await addBookingLinks(itinerary);
@@ -115,7 +115,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 };
 
-async function planTripWithBedrock(
+async function planTripWithAI(
   request: TripPlanRequest,
   weather: any,
   gasPrices: any,
@@ -184,7 +184,7 @@ Format your response as structured JSON with this schema:
   ]
 }`;
 
-  const response = await bedrockService.planWithOpus(
+  const response = await getAIProvider().plan(
     [{ role: 'user', content: prompt }],
     undefined,
     4000
@@ -200,7 +200,7 @@ Format your response as structured JSON with this schema:
   try {
     return JSON.parse(response);
   } catch {
-    throw new Error('Failed to parse Claude response as JSON');
+    throw new Error('Failed to parse AI response as JSON');
   }
 }
 

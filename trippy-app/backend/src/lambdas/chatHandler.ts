@@ -2,7 +2,7 @@ import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
-import { bedrockService } from '../services/bedrockService';
+import { getAIProvider } from '../services/aiService';
 import { v4 as uuidv4 } from 'uuid';
 
 const ddbClient = new DynamoDBClient({});
@@ -52,17 +52,17 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       // Load trip context
       const context = await loadTripContext(tripId);
 
-      // Determine if we need planning (Opus) or chat (Sonnet)
+      // Determine if we need deep planning or quick chat
       const needsPlanning = await determineIntent(message);
 
       let samResponse: string;
 
       if (needsPlanning) {
-        // Use Bedrock Claude for complex planning
-        samResponse = await claudeBedrockPlanning(message, context);
+        // Use the configured AI provider for complex planning
+        samResponse = await generatePlanningResponse(message, context);
       } else {
-        // Use Bedrock Claude Sonnet for quick chat
-        samResponse = await claudeBedrockChat(message, context);
+        // Use the configured AI provider for quick chat
+        samResponse = await generateChatResponse(message, context);
       }
 
       // Save Sam's response
@@ -146,7 +146,7 @@ async function loadTripContext(tripId: string): Promise<TripContext> {
 
 async function determineIntent(message: string): Promise<boolean> {
   // Simple keyword detection for now
-  // Later: use Claude to classify intent
+  // Later: use the AI provider to classify intent
   const planningKeywords = [
     'plan', 'route', 'itinerary', 'optimize',
     'add stop', 'change', 'modify', 'rearrange'
@@ -157,7 +157,7 @@ async function determineIntent(message: string): Promise<boolean> {
   );
 }
 
-async function claudeBedrockChat(
+async function generateChatResponse(
   message: string,
   context: TripContext
 ): Promise<string> {
@@ -167,10 +167,10 @@ async function claudeBedrockChat(
     { role: 'user' as const, content: message },
   ];
 
-  return bedrockService.chatWithSonnet(messages, systemPrompt, 1000);
+  return getAIProvider().chat(messages, systemPrompt, 1000);
 }
 
-async function claudeBedrockPlanning(
+async function generatePlanningResponse(
   message: string,
   context: TripContext
 ): Promise<string> {
@@ -180,7 +180,7 @@ async function claudeBedrockPlanning(
     { role: 'user' as const, content: message },
   ];
 
-  return bedrockService.planWithOpus(messages, systemPrompt, 4000);
+  return getAIProvider().plan(messages, systemPrompt, 4000);
 }
 
 function modeVoice(travelMode: TripContext['travelMode']): string {
