@@ -1,0 +1,21 @@
+{
+  "tripName": "Two weeks in Japan",
+  "travelMode": "flight",
+  "origin": { "lat": 37.6213, "lng": -122.379, "name": "SFO" },
+  "destination": { "lat": 35.5494, "lng": 139.7798, "name": "HND" },
+  "legs": [
+    {
+      "id": "jp-out",
+      "transport": "flight",
+      "from": { "lat": 37.6213, "lng": -122.379, "name": "San Francisco" },
+      "to": { "lat": 35.5494, "lng": 139.7798, "name": "Tokyo" },
+      "estimatedCost": 640
+    }
+  ],
+  "startDate": "2026-11-02",
+  "endDate": "2026-11-16",
+  "datesFlexible": true,
+  "tripType": "couple",
+  "homeCurrency": "USD",
+  "preferences": { "budget": 2800 }
+}

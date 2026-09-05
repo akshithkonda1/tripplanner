@@ -17,6 +17,7 @@ interface ChatMessage {
 
 interface TripContext {
   tripId: string;
+  travelMode: 'road' | 'flight' | 'hybrid';
   messages: any[];
   itinerary: any[];
   preferences: Record<string, any>;
@@ -129,11 +130,17 @@ async function loadTripContext(tripId: string): Promise<TripContext> {
     }
   }));
 
+  const trip = tripResult.Items?.[0];
+  const travelMode = trip?.travelMode === 'flight' || trip?.travelMode === 'hybrid'
+    ? trip.travelMode
+    : 'road';
+
   return {
     tripId,
+    travelMode,
     messages: messagesResult.Items || [],
     itinerary: itineraryResult.Items || [],
-    preferences: tripResult.Items?.[0]?.preferences || {}
+    preferences: trip?.preferences || {}
   };
 }
 
@@ -176,11 +183,24 @@ async function claudeBedrockPlanning(
   return bedrockService.planWithOpus(messages, systemPrompt, 4000);
 }
 
+function modeVoice(travelMode: TripContext['travelMode']): string {
+  if (travelMode === 'flight') {
+    return 'This is Flight Mode: longer trips, city stays, cheap fares, transit — not scenic drives and gas.';
+  }
+  if (travelMode === 'hybrid') {
+    return 'This is a Hybrid trip: treat each leg by its transport (fly, drive, train) and keep one shared budget.';
+  }
+  return 'This is Road Mode: scenic vs. fast driving, fuel, campsites, roadside food.';
+}
+
 function buildChatSystemPrompt(context: TripContext): string {
-  return `You are Sam, a friendly AI road trip planning assistant.
+  return `You are Sam, a friendly AI trip planning assistant.
+
+${modeVoice(context.travelMode)}
 
 Current trip context:
 - Trip ID: ${context.tripId}
+- Travel mode: ${context.travelMode}
 - Current itinerary: ${JSON.stringify(context.itinerary, null, 2)}
 - User preferences: ${JSON.stringify(context.preferences, null, 2)}
 
@@ -194,12 +214,15 @@ Respond naturally and conversationally. Keep responses concise for chat.`;
 }
 
 function buildPlanningSystemPrompt(context: TripContext): string {
-  return `You are Sam, an expert road trip planning assistant.
+  return `You are Sam, an expert trip planning assistant.
+
+${modeVoice(context.travelMode)}
 
 You have access to:
 - Weather forecasts
-- Gas and EV charging prices
-- Route optimization
+- Gas and EV charging prices (Road / Hybrid drive legs)
+- Cheap flight search (Flight / Hybrid air legs)
+- Route optimization and city-stay structure
 - Accommodation options
 
 Current trip:

@@ -137,6 +137,14 @@ export class TrippyBackendStack extends cdk.Stack {
       bundling: bundlingConfig
     });
 
+    const listTrips = new nodejs.NodejsFunction(this, 'ListTrips', {
+      entry: path.join(__dirname, '../../backend/src/lambdas/tripManagement.ts'),
+      handler: 'getUserTrips',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      environment: lambdaEnvironment,
+      bundling: bundlingConfig
+    });
+
     // Connection Handlers
     const connectHandler = new nodejs.NodejsFunction(this, 'ConnectHandler', {
       entry: path.join(__dirname, '../../backend/src/lambdas/connectionHandler.ts'),
@@ -160,6 +168,7 @@ export class TrippyBackendStack extends cdk.Stack {
       table.grantReadWriteData(tripPlanner);
       table.grantReadWriteData(createTrip);
       table.grantReadWriteData(getTrip);
+      table.grantReadWriteData(listTrips);
       table.grantReadWriteData(connectHandler);
       table.grantReadWriteData(disconnectHandler);
     });
@@ -216,6 +225,15 @@ export class TrippyBackendStack extends cdk.Stack {
       integration: new apigatewayIntegrations.HttpLambdaIntegration(
         'CreateTripIntegration',
         createTrip
+      )
+    });
+
+    httpApi.addRoutes({
+      path: '/trips',
+      methods: [apigateway.HttpMethod.GET],
+      integration: new apigatewayIntegrations.HttpLambdaIntegration(
+        'ListTripsIntegration',
+        listTrips
       )
     });
 

@@ -37,6 +37,88 @@ describe('Trip Management Lambda Functions', () => {
       expect(body.success).toBe(true);
       expect(body.trip.tripName).toBe('Summer Road Trip');
       expect(body.trip.tripType).toBe('family');
+      expect(body.trip.travelMode).toBe('road');
+      expect(body.trip.datesFlexible).toBe(false);
+      expect(body.trip.legs).toEqual([]);
+    });
+
+    it('should accept the shared Flight Mode create-trip fixture', async () => {
+      ddbMock.on(PutCommand).resolves({});
+      const { readFileSync } = require('fs');
+      const { join } = require('path');
+      const fixturePath = join(
+        process.cwd(),
+        '..',
+        '..',
+        'shared',
+        'api',
+        'create-trip-request.flight.json'
+      );
+      const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'));
+
+      const event = {
+        body: JSON.stringify(fixture),
+        requestContext: { authorizer: { claims: { sub: 'user-123' } } }
+      } as any;
+
+      const result = await createTrip(event, {} as any, () => {});
+      expect(result?.statusCode).toBe(201);
+      const body = JSON.parse(result?.body || '{}');
+      expect(body.trip.travelMode).toBe('flight');
+      expect(body.trip.tripName).toBe('Two weeks in Japan');
+      expect(body.trip.datesFlexible).toBe(true);
+      expect(body.trip.legs[0].transport).toBe('flight');
+    });
+
+    it('should persist flight mode and flexible dates', async () => {
+      ddbMock.on(PutCommand).resolves({});
+
+      const event = {
+        body: JSON.stringify({
+          tripName: 'Two weeks in Japan',
+          travelMode: 'flight',
+          datesFlexible: true,
+          origin: { lat: 37.62, lng: -122.37, name: 'SFO' },
+          destination: { lat: 35.54, lng: 139.77, name: 'HND' },
+          legs: [{ transport: 'flight', from: { name: 'SFO' }, to: { name: 'HND' } }],
+          startDate: '2026-11-02',
+          endDate: '2026-11-16',
+          tripType: 'couple'
+        }),
+        requestContext: {
+          authorizer: {
+            claims: { sub: 'user-123' }
+          }
+        }
+      } as any;
+
+      const result = await createTrip(event, {} as any, () => {});
+
+      expect(result?.statusCode).toBe(201);
+      const body = JSON.parse(result?.body || '{}');
+      expect(body.trip.travelMode).toBe('flight');
+      expect(body.trip.datesFlexible).toBe(true);
+      expect(body.trip.legs).toHaveLength(1);
+    });
+
+    it('should treat unknown travelMode as road', async () => {
+      ddbMock.on(PutCommand).resolves({});
+
+      const event = {
+        body: JSON.stringify({
+          tripName: 'Mystery trip',
+          travelMode: 'teleport',
+          origin: { lat: 0, lng: 0, name: 'A' },
+          destination: { lat: 1, lng: 1, name: 'B' },
+          startDate: '2026-01-01',
+          endDate: '2026-01-02'
+        }),
+        requestContext: {}
+      } as any;
+
+      const result = await createTrip(event, {} as any, () => {});
+      const body = JSON.parse(result?.body || '{}');
+      expect(body.trip.travelMode).toBe('road');
     });
 
     it('should return 500 on database error', async () => {
