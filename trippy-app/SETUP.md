@@ -225,7 +225,11 @@ TrippyBackendStack.HttpApiUrl = https://xxxxx.execute-api.us-east-1.amazonaws.co
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `CLAUDE_API_KEY` | Yes | Anthropic API key for Claude |
+| `AI_PROVIDER` | No | Sam's AI provider: `claude` (default, Bedrock) or `grok` (xAI) |
+| `GROK_API_KEY` | If `AI_PROVIDER=grok` | xAI API key for Grok |
+| `GROK_MODEL` | No | Grok model id (default `grok-4`) |
+| `GROK_PLANNING_MODEL` | No | Grok model id for planning (defaults to `GROK_MODEL`) |
+| `GROK_API_URL` | No | xAI endpoint (default `https://api.x.ai/v1/chat/completions`) |
 | `OPENWEATHER_API_KEY` | No | OpenWeather API for forecasts |
 | `GRAPHHOPPER_API_KEY` | No | GraphHopper for routing |
 | `BOOKING_AFFILIATE_ID` | No | Booking.com affiliate ID |
