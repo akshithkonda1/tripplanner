@@ -174,7 +174,7 @@ wss://your-ws-api.execute-api.us-east-1.amazonaws.com/production?tripId={tripId}
 | POST | `/trips/{tripId}/flights` | Attach a fare to a leg |
 | GET | `/flights/status/{flightNumber}` | Live status for the active leg |
 
-`POST /trips/{tripId}/plan` branches Sam's Bedrock prompt on `travelMode`.
+Those flight-search routes are **not** being built. Flight Mode is tickets you log yourself. Sam still plans on Bedrock / on-device.
 
 ## Error Responses
 
@@ -193,10 +193,13 @@ Common HTTP status codes:
 
 ## Authentication
 
-All requests require a valid JWT token in the Authorization header:
+Amazon Cognito User Pool issues the JWT. The HTTP API authorizer expects:
+
 ```
-Authorization: Bearer <jwt-token>
+Authorization: Bearer <cognito-id-token>
 ```
+
+Guest mode on iOS does not call these routes.
 
 ## Rate Limits
 

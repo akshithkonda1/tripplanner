@@ -4,6 +4,8 @@ import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigateway from 'aws-cdk-lib/aws-apigatewayv2';
 import * as apigatewayIntegrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as apigatewayAuthorizers from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as elasticache from 'aws-cdk-lib/aws-elasticache';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
@@ -18,6 +20,7 @@ interface BackendStackProps extends cdk.StackProps {
     connections: dynamodb.Table;
     users: dynamodb.Table;
   };
+  userPool: cognito.IUserPool;
 }
 
 export class TrippyBackendStack extends cdk.Stack {
@@ -209,6 +212,11 @@ export class TrippyBackendStack extends cdk.Stack {
       resources: [`arn:aws:execute-api:${this.region}:${this.account}:${webSocketApi.apiId}/*`]
     }));
 
+    const jwtAuthorizer = new apigatewayAuthorizers.HttpUserPoolAuthorizer(
+      'CognitoAuthorizer',
+      props.userPool
+    );
+
     // REST API
     const httpApi = new apigateway.HttpApi(this, 'TrippyHttpApi', {
       apiName: 'TrippyHttpApi',
@@ -219,14 +227,17 @@ export class TrippyBackendStack extends cdk.Stack {
       }
     });
 
-    // REST API Routes
+    const authorized = { authorizer: jwtAuthorizer };
+
+    // REST API Routes — Cognito JWT required
     httpApi.addRoutes({
       path: '/trips',
       methods: [apigateway.HttpMethod.POST],
       integration: new apigatewayIntegrations.HttpLambdaIntegration(
         'CreateTripIntegration',
         createTrip
-      )
+      ),
+      ...authorized
     });
 
     httpApi.addRoutes({
@@ -235,7 +246,8 @@ export class TrippyBackendStack extends cdk.Stack {
       integration: new apigatewayIntegrations.HttpLambdaIntegration(
         'ListTripsIntegration',
         listTrips
-      )
+      ),
+      ...authorized
     });
 
     httpApi.addRoutes({
@@ -244,7 +256,8 @@ export class TrippyBackendStack extends cdk.Stack {
       integration: new apigatewayIntegrations.HttpLambdaIntegration(
         'GetTripIntegration',
         getTrip
-      )
+      ),
+      ...authorized
     });
 
     httpApi.addRoutes({
@@ -253,7 +266,8 @@ export class TrippyBackendStack extends cdk.Stack {
       integration: new apigatewayIntegrations.HttpLambdaIntegration(
         'PlanTripIntegration',
         tripPlanner
-      )
+      ),
+      ...authorized
     });
 
     // Outputs

@@ -3,20 +3,21 @@ import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { TrippyBackendStack } from '../lib/backend-stack';
 import { TrippyDatabaseStack } from '../lib/database-stack';
+import { TrippyAuthStack } from '../lib/auth-stack';
 
 const app = new cdk.App();
 
-const databaseStack = new TrippyDatabaseStack(app, 'TrippyDatabaseStack', {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION || 'us-east-1'
-  }
-});
+const env = {
+  account: process.env.CDK_DEFAULT_ACCOUNT,
+  region: process.env.CDK_DEFAULT_REGION || 'us-east-1'
+};
+
+const authStack = new TrippyAuthStack(app, 'TrippyAuthStack', { env });
+
+const databaseStack = new TrippyDatabaseStack(app, 'TrippyDatabaseStack', { env });
 
 new TrippyBackendStack(app, 'TrippyBackendStack', {
   tables: databaseStack.tables,
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION || 'us-east-1'
-  }
+  userPool: authStack.userPool,
+  env
 });

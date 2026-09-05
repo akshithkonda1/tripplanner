@@ -46,7 +46,7 @@ enum StopType: String, Codable {
     case drive, flight, food, lodging, activity, fuel, rest, transit
 }
 
-enum ExpenseCategory: String, Codable {
+enum ExpenseCategory: String, Codable, CaseIterable {
     case flights, fuel, food, lodging, activities, transit, misc
 }
 
