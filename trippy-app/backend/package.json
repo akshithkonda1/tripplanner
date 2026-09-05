@@ -5,7 +5,8 @@
   "scripts": {
     "build": "tsc",
     "deploy": "sam deploy",
-    "test": "jest"
+    "test": "jest",
+    "smoke:local": "node scripts/local-e2e.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-apigatewaymanagementapi": "^3.500.0",

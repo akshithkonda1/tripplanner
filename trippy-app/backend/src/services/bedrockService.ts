@@ -3,6 +3,7 @@ import {
   InvokeModelCommand,
   InvokeModelCommandInput,
 } from '@aws-sdk/client-bedrock-runtime';
+import { AIMessage, AIProvider } from './aiProvider';
 
 const bedrockClient = new BedrockRuntimeClient({
   region: process.env.AWS_REGION || 'us-east-1',
@@ -15,10 +16,7 @@ export const CLAUDE_MODELS = {
   HAIKU: 'anthropic.claude-3-5-haiku-20241022-v1:0',
 };
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
+type Message = AIMessage;
 
 interface BedrockResponse {
   content: Array<{
@@ -32,7 +30,27 @@ interface BedrockResponse {
   };
 }
 
-export class BedrockService {
+export class BedrockService implements AIProvider {
+  readonly name = 'claude';
+
+  /** AIProvider: conversational response (Claude Sonnet). */
+  async chat(
+    messages: Message[],
+    systemPrompt?: string,
+    maxTokens: number = 1000
+  ): Promise<string> {
+    return this.chatWithSonnet(messages, systemPrompt, maxTokens);
+  }
+
+  /** AIProvider: deeper planning response (Claude Opus/Sonnet). */
+  async plan(
+    messages: Message[],
+    systemPrompt?: string,
+    maxTokens: number = 4000
+  ): Promise<string> {
+    return this.planWithOpus(messages, systemPrompt, maxTokens);
+  }
+
   /**
    * Call Claude via Bedrock - Conversational (Sonnet)
    */

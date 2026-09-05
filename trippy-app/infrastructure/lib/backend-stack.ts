@@ -69,7 +69,12 @@ export class TrippyBackendStack extends cdk.Stack {
       USERS_TABLE: props.tables.users.tableName,
       OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY || '',
       REDIS_ENDPOINT: redisCluster.attrRedisEndpointAddress,
-      AWS_REGION: this.region,
+      // AI provider selection: "claude" (Bedrock, default) or "grok" (xAI).
+      AI_PROVIDER: process.env.AI_PROVIDER || 'claude',
+      GROK_API_KEY: process.env.GROK_API_KEY || '',
+      GROK_MODEL: process.env.GROK_MODEL || '',
+      GROK_PLANNING_MODEL: process.env.GROK_PLANNING_MODEL || '',
+      GROK_API_URL: process.env.GROK_API_URL || '',
     };
 
     // Bedrock IAM Policy
