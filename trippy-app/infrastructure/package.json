@@ -4,7 +4,10 @@
   "scripts": {
     "build": "tsc",
     "deploy": "cdk deploy --all",
-    "destroy": "cdk destroy --all"
+    "destroy": "cdk destroy --all",
+    "tf:build": "node terraform/bundle.mjs",
+    "tf:plan": "npm run tf:build && terraform -chdir=terraform plan",
+    "tf:apply": "npm run tf:build && terraform -chdir=terraform apply"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.120.0",

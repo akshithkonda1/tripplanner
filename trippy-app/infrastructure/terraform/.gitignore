@@ -1,0 +1,17 @@
+# Terraform working files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Local variable files (may contain secrets)
+*.tfvars
+!terraform.tfvars.example
+
+# Active remote-state backend (copied from backend.tf.example)
+backend.tf
+
+# Lambda build artifacts (produced by bundle.mjs + archive_file)
+build/
