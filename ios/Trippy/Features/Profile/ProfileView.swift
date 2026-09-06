@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @EnvironmentObject private var theme: ThemeManager
+
     var body: some View {
         NavigationStack {
             List {
@@ -10,9 +12,13 @@ struct ProfileView: View {
                         .font(.footnote)
                         .foregroundStyle(TrippyTheme.muted)
                 }
+                Section("Theme") {
+                    ThemePickerView()
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    LabeledContent("Active", value: "\(theme.palette.emoji) \(theme.palette.name)")
+                }
                 Section("Preferences") {
                     LabeledContent("Units", value: "Miles · USD")
-                    LabeledContent("Theme", value: "System")
                     LabeledContent("Default mode", value: "Ask each time")
                 }
                 Section("About") {
