@@ -9,7 +9,10 @@ struct CreateTripView: View {
     @State private var mode: TravelMode = .road
     @State private var origin = ""
     @State private var destination = ""
+    @State private var originLocation: Location?
+    @State private var destinationLocation: Location?
     @State private var extraCities: [String] = []
+    @State private var extraCityLocations: [String: Location] = [:]
     @State private var newCity = ""
     @State private var startDate = Date().addingTimeInterval(86_400 * 21)
     @State private var endDate = Date().addingTimeInterval(86_400 * 28)
@@ -17,6 +20,7 @@ struct CreateTripView: View {
     @State private var budgetText = ""
     @State private var datesFlexible = false
     @State private var airportQuery = ""
+    @State private var isSaving = false
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty
@@ -56,12 +60,16 @@ struct CreateTripView: View {
                         TextField("Search SFO, Lisbon, Narita…", text: $airportQuery)
                         ForEach(AirportDirectory.search(airportQuery).prefix(8)) { airport in
                             Button {
+                                let resolved = airport.location
                                 if origin.isEmpty {
-                                    origin = "\(airport.iata) \(airport.city)"
+                                    origin = resolved.name
+                                    originLocation = resolved
                                 } else if destination.isEmpty {
-                                    destination = "\(airport.iata) \(airport.city)"
+                                    destination = resolved.name
+                                    destinationLocation = resolved
                                 } else {
-                                    extraCities.append("\(airport.iata) \(airport.city)")
+                                    extraCities.append(resolved.name)
+                                    extraCityLocations[resolved.name] = resolved
                                 }
                             } label: {
                                 VStack(alignment: .leading) {
@@ -110,56 +118,76 @@ struct CreateTripView: View {
             .background(TrippyTheme.cream.ignoresSafeArea())
             .navigationTitle("New trip")
             .navigationBarTitleDisplayMode(.inline)
+            .disabled(isSaving)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { save() }
-                        .disabled(!canSave)
-                        .fontWeight(.semibold)
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Create") { save() }
+                            .disabled(!canSave)
+                            .fontWeight(.semibold)
+                    }
                 }
             }
         }
     }
 
-    private func save() {
-        let from = Location(lat: 0, lng: 0, name: origin.trimmingCharacters(in: .whitespaces))
-        let to = Location(lat: 0, lng: 0, name: destination.trimmingCharacters(in: .whitespaces))
-        let transport: TransportType = mode == .road ? .drive : .flight
-
-        var legs = [TripLeg(id: UUID().uuidString, transport: transport, from: from, to: to)]
-        var previous = to
-        for city in extraCities {
-            let next = Location(lat: 0, lng: 0, name: city)
-            legs.append(
-                TripLeg(
-                    id: UUID().uuidString,
-                    transport: mode == .hybrid ? .drive : .flight,
-                    from: previous,
-                    to: next
-                )
-            )
-            previous = next
+    /// Uses the exact airport coordinates when the text still matches what was tapped;
+    /// otherwise geocodes what the user typed so the map and fuel math get real coordinates.
+    private func resolveLocation(text: String, cached: Location?) async -> Location {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if let cached, cached.name == trimmed {
+            return cached
         }
+        if let found = await GeocodingService.locate(trimmed) {
+            return found
+        }
+        return Location(lat: 0, lng: 0, name: trimmed)
+    }
 
-        let trip = Trip(
-            id: UUID().uuidString,
-            name: name.trimmingCharacters(in: .whitespaces),
-            travelMode: mode,
-            origin: from,
-            destination: extraCities.isEmpty ? to : previous,
-            legs: legs,
-            startDate: DateFormatters.iso.string(from: startDate),
-            endDate: DateFormatters.iso.string(from: endDate),
-            datesFlexible: datesFlexible && mode != .road,
-            tripType: tripType,
-            budget: Decimal(string: budgetText),
-            status: .planning,
-            participants: [Participant(id: "you", name: session.email)]
-        )
+    private func save() {
+        isSaving = true
         Task {
+            let from = await resolveLocation(text: origin, cached: originLocation)
+            let to = await resolveLocation(text: destination, cached: destinationLocation)
+            let transport: TransportType = mode == .road ? .drive : .flight
+
+            var legs = [TripLeg(id: UUID().uuidString, transport: transport, from: from, to: to)]
+            var previous = to
+            for city in extraCities {
+                let next = await resolveLocation(text: city, cached: extraCityLocations[city])
+                legs.append(
+                    TripLeg(
+                        id: UUID().uuidString,
+                        transport: mode == .hybrid ? .drive : .flight,
+                        from: previous,
+                        to: next
+                    )
+                )
+                previous = next
+            }
+
+            let trip = Trip(
+                id: UUID().uuidString,
+                name: name.trimmingCharacters(in: .whitespaces),
+                travelMode: mode,
+                origin: from,
+                destination: extraCities.isEmpty ? to : previous,
+                legs: legs,
+                startDate: DateFormatters.iso.string(from: startDate),
+                endDate: DateFormatters.iso.string(from: endDate),
+                datesFlexible: datesFlexible && mode != .road,
+                tripType: tripType,
+                budget: Decimal(string: budgetText),
+                status: .planning,
+                participants: [Participant(id: "you", name: session.email)]
+            )
             await store.create(trip, idToken: session.idToken)
+            isSaving = false
             dismiss()
         }
     }

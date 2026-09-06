@@ -7,7 +7,7 @@ struct AuthGateView: View {
     @State private var code = ""
     @State private var mode: Mode = .signIn
 
-    private enum Mode { case signIn, signUp, confirm }
+    private enum Mode: Hashable { case signIn, signUp, confirm }
 
     var body: some View {
         ScrollView {

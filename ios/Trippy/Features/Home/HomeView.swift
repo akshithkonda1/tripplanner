@@ -49,6 +49,7 @@ struct HomeView: View {
                 CreateTripView()
             }
             .task { await store.refresh(idToken: session.idToken) }
+            .refreshable { await store.refresh(idToken: session.idToken) }
         }
     }
 
