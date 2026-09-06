@@ -9,7 +9,7 @@ final class TripStore: ObservableObject {
 
     private var context: ModelContext?
 
-    init(workspaces: [TripWorkspace] = SampleTrips.all.map(Self.makeWorkspace)) {
+    init(workspaces: [TripWorkspace] = SampleTrips.all.map(TripStore.makeWorkspace)) {
         self.workspaces = workspaces
     }
 
@@ -104,7 +104,7 @@ final class TripStore: ObservableObject {
         return next
     }
 
-    static func makeWorkspace(_ trip: Trip) -> TripWorkspace {
+    nonisolated static func makeWorkspace(_ trip: Trip) -> TripWorkspace {
         TripWorkspace(
             trip: trip,
             expenses: [],
