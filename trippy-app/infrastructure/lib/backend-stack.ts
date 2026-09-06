@@ -64,7 +64,9 @@ export class TrippyBackendStack extends cdk.Stack {
       ITINERARY_TABLE: props.tables.itinerary.tableName,
       CONNECTIONS_TABLE: props.tables.connections.tableName,
       USERS_TABLE: props.tables.users.tableName,
-      OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY || '',
+      // Weather is free/keyless: iOS uses Apple WeatherKit, backend uses Open-Meteo.
+      WEATHER_PROVIDER: process.env.WEATHER_PROVIDER || 'open-meteo',
+      GRAPHHOPPER_API_KEY: process.env.GRAPHHOPPER_API_KEY || '',
       REDIS_ENDPOINT: redisCluster.attrRedisEndpointAddress,
       // AI provider selection: "claude" (Bedrock, default) or "grok" (xAI).
       AI_PROVIDER: process.env.AI_PROVIDER || 'claude',

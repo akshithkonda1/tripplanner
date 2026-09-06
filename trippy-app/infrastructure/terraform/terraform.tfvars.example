@@ -1,0 +1,41 @@
+# Copy to terraform.tfvars and adjust. All values are optional; the defaults
+# are tuned to be cheap.
+
+project     = "trippy"
+environment = "dev"
+aws_region  = "us-east-1"
+
+# --- Cost knobs -----------------------------------------------------------
+# arm64 (Graviton) Lambdas are cheaper and faster for this workload.
+lambda_architecture = "arm64"
+# Keep logs short in dev to avoid CloudWatch storage cost.
+log_retention_days = 14
+# On-demand DynamoDB scales to zero. Switch to PROVISIONED only if you have
+# steady, predictable traffic and want to buy reserved capacity.
+dynamodb_billing_mode = "PAY_PER_REQUEST"
+# PITR + deletion protection add cost/safety — turn on for prod.
+enable_point_in_time_recovery = false
+dynamodb_deletion_protection  = false
+
+# --- AI provider (Sam) ----------------------------------------------------
+ai_provider = "claude" # or "grok"
+# grok_api_key is best supplied via the environment:
+#   export TF_VAR_grok_api_key=xai-...
+# grok_model          = "grok-4"
+# grok_planning_model = "grok-4"
+
+# --- Weather (free, no key) -----------------------------------------------
+# Backend uses Open-Meteo (free/keyless); the iOS app uses Apple WeatherKit.
+# weather_provider = "open-meteo"   # or "mock" for offline
+
+# --- External APIs (optional; app falls back to mock data) ----------------
+# graphhopper_api_key = "..."
+
+# --- API Gateway ----------------------------------------------------------
+# Lock CORS down in production, e.g. ["https://app.trippy.example"].
+cors_allow_origins = ["*"]
+
+tags = {
+  # CostCenter = "travel"
+  # Owner      = "platform-team"
+}
