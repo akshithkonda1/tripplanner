@@ -198,7 +198,7 @@ Needs AWS credentials and Bedrock model access in the target region. See `trippy
 2. **Cognito + AWS deploy** — plug real pool IDs into the Xcode scheme, sync trips when signed in
 3. **Sam on Bedrock** — signed-in planning through Lambda
 4. **Group chat** — WebSocket, still AWS, still no travel vendors
-5. **iOS polish** — geocode typed cities with MapKit, haptics, a11y, dark mode
+5. **iOS polish** — typed cities now geocode via MapKit; haptics, a11y, dark mode, and itinerary drag-to-reorder are next
 6. **Kotlin port** — after iOS is the source of truth
 7. **Store listing**
 

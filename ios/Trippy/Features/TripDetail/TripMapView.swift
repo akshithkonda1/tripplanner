@@ -15,16 +15,33 @@ struct TripMapView: View {
                 MapPolyline(coordinates: pins.map(\.coordinate))
                     .stroke(TrippyTheme.color(for: trip.travelMode), lineWidth: 4)
             }
+            UserAnnotation()
+        }
+        .mapControls {
+            MapUserLocationButton()
+            MapCompass()
+        }
+        .overlay {
+            if pins.isEmpty {
+                ContentUnavailableView(
+                    "No coordinates yet",
+                    systemImage: "map",
+                    description: Text("We couldn't place \(trip.origin.name) or \(trip.destination.name) on the map. Edit the trip with a more specific place name, or pick one of the bundled airports.")
+                )
+                .background(TrippyTheme.cream)
+            }
         }
         .overlay(alignment: .bottom) {
-            Text(trip.travelMode == .flight
-                 ? "MapKit only. The line is a sketch between pins — not a purchased flight path."
-                 : "MapKit driving sketch. Fuel math is on the Fuel tab (your MPG × a price you type).")
-                .font(.caption)
-                .padding(10)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .padding()
+            if !pins.isEmpty {
+                Text(trip.travelMode == .flight
+                     ? "MapKit only. The line is a sketch between pins — not a purchased flight path."
+                     : "MapKit driving sketch. Fuel math is on the Fuel tab (your MPG × a price you type).")
+                    .font(.caption)
+                    .padding(10)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding()
+            }
         }
     }
 
@@ -38,13 +55,6 @@ struct TripMapView: View {
         }
         if trip.destination.lat != 0 || trip.destination.lng != 0 {
             points.append((trip.destination.name, .init(latitude: trip.destination.lat, longitude: trip.destination.lng)))
-        }
-        if points.isEmpty {
-            // Sample trips have real coordinates; user-typed cities may be 0,0 — still show a map.
-            points = [
-                (trip.origin.name, CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)),
-                (trip.destination.name, CLLocationCoordinate2D(latitude: 34.0522, longitude: -118.2437))
-            ]
         }
         return points
     }
