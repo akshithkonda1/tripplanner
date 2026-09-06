@@ -24,8 +24,11 @@ ai_provider = "claude" # or "grok"
 # grok_model          = "grok-4"
 # grok_planning_model = "grok-4"
 
+# --- Weather (free, no key) -----------------------------------------------
+# Backend uses Open-Meteo (free/keyless); the iOS app uses Apple WeatherKit.
+# weather_provider = "open-meteo"   # or "mock" for offline
+
 # --- External APIs (optional; app falls back to mock data) ----------------
-# openweather_api_key = "..."
 # graphhopper_api_key = "..."
 
 # --- API Gateway ----------------------------------------------------------

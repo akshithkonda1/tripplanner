@@ -131,11 +131,10 @@ variable "grok_api_url" {
 # External APIs
 # ---------------------------------------------------------------------------
 
-variable "openweather_api_key" {
-  description = "OpenWeather API key (optional; app falls back to mock data)."
+variable "weather_provider" {
+  description = "Backend weather source. \"open-meteo\" (free, keyless, default) or \"mock\". The iOS app uses Apple WeatherKit natively."
   type        = string
-  default     = ""
-  sensitive   = true
+  default     = "open-meteo"
 }
 
 variable "graphhopper_api_key" {
