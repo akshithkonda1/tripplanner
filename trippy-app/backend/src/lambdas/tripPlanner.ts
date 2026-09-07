@@ -3,6 +3,8 @@ import { getAIProvider } from '../services/aiService';
 import { getWeatherForecast } from '../services/weatherService';
 import { getGasPrices, getEVCharging } from '../services/fuelService';
 import { generateBookingLinks } from '../services/bookingService';
+import { calculateMultiLegRoute } from '../services/mapsService';
+import { buildFlightItinerary, FlightLeg } from '../services/flightService';
 
 interface Location {
   lat: number;
@@ -21,6 +23,10 @@ interface TripPlanRequest {
   travelMode?: TravelMode;
   datesFlexible?: boolean;
   legs?: Array<{ transport?: string; from?: { name?: string }; to?: { name?: string } }>;
+  // Ordered stops for a multi-stop road trip, e.g. [Home, Little Rock, LA, Moab].
+  stops?: Location[];
+  // Explicit multi-city flight legs (airport codes / cities + dates).
+  flightLegs?: FlightLeg[];
   preferences: {
     budget?: number;
     interests?: string[];
@@ -93,6 +99,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // Step 4: Add booking links
     const itineraryWithLinks = await addBookingLinks(itinerary);
 
+    // Step 5: Multi-map routing + multi-city flight booking links (all free).
+    const routing = await buildRouting(request, travelMode);
+    const flights = buildFlights(request, travelMode);
+
     return {
       statusCode: 200,
       headers: {
@@ -103,7 +113,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         success: true,
         itinerary: itineraryWithLinks,
         weather,
-        fuelData: { gasPrices, evCharging }
+        fuelData: { gasPrices, evCharging },
+        routing,
+        flights
       })
     };
   } catch (error) {
@@ -201,6 +213,43 @@ Format your response as structured JSON with this schema:
     return JSON.parse(response);
   } catch {
     throw new Error('Failed to parse AI response as JSON');
+  }
+}
+
+// Build the multi-leg driving route (Home -> Little Rock -> LA -> Moab -> ...).
+// Uses the free OSRM router; skipped for pure flight trips. Non-fatal on error.
+async function buildRouting(request: TripPlanRequest, travelMode: TravelMode) {
+  if (travelMode === 'flight') return null;
+
+  const stops = request.stops && request.stops.length >= 2
+    ? request.stops
+    : [request.origin, request.destination];
+
+  try {
+    return await calculateMultiLegRoute(stops);
+  } catch (error) {
+    console.error('Multi-leg routing failed:', error);
+    return null;
+  }
+}
+
+// Build multi-city flight booking links. Uses explicit flightLegs when given,
+// otherwise a simple round trip from origin to destination and back.
+function buildFlights(request: TripPlanRequest, travelMode: TravelMode) {
+  if (travelMode !== 'flight' && travelMode !== 'hybrid') return null;
+
+  const legs: FlightLeg[] = request.flightLegs && request.flightLegs.length
+    ? request.flightLegs
+    : [
+        { from: request.origin.name, to: request.destination.name, date: request.startDate },
+        { from: request.destination.name, to: request.origin.name, date: request.endDate },
+      ];
+
+  try {
+    return buildFlightItinerary(legs);
+  } catch (error) {
+    console.error('Flight itinerary failed:', error);
+    return null;
   }
 }
 

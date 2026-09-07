@@ -3,6 +3,7 @@ import axios from 'axios';
 interface Coordinates {
   lat: number;
   lng: number;
+  name?: string;
 }
 
 interface RouteResponse {
@@ -20,6 +21,20 @@ interface RouteStep {
   endLocation: Coordinates;
 }
 
+// A single hop between two stops (e.g. Home -> Arkansas).
+interface RouteLeg {
+  from: Coordinates;
+  to: Coordinates;
+  route: RouteResponse;
+}
+
+// A full multi-stop road trip: Home -> Arkansas -> LA -> Moab -> ...
+interface MultiLegRoute {
+  legs: RouteLeg[];
+  totalDistance: number; // miles
+  totalDuration: number; // minutes
+}
+
 interface Place {
   name: string;
   address: string;
@@ -30,61 +45,137 @@ interface Place {
   photos?: string[];
 }
 
-// Note: We're using Apple Maps in the mobile app (free)
-// This service is for server-side route calculations if needed
-// Alternative: Use OpenStreetMap/GraphHopper (free) or Google Maps API
+// Routing keeps costs at ZERO by default:
+//   * iOS app: uses Apple Maps / MapKit directions natively (free).
+//   * Backend: uses OSRM's free public router (no API key).
+// GraphHopper remains available (ROUTING_PROVIDER=graphhopper) if a key is set.
+const OSRM_BASE = 'https://router.project-osrm.org/route/v1/driving';
+const GRAPHHOPPER_BASE = 'https://graphhopper.com/api/1/route';
 
+function routingProvider(): string {
+  return (process.env.ROUTING_PROVIDER || 'osrm').toLowerCase();
+}
+
+/**
+ * Calculate a driving route through an ordered list of points
+ * (origin, optional waypoints, destination).
+ */
 export async function calculateRoute(
   origin: Coordinates,
   destination: Coordinates,
   waypoints?: Coordinates[]
 ): Promise<RouteResponse> {
-  // Using GraphHopper API (free tier available)
-  // Alternative: OSRM (completely free, self-hosted option)
+  const points = [origin, ...(waypoints || []), destination];
 
   try {
-    const points = [
-      origin,
-      ...(waypoints || []),
-      destination
-    ];
-
-    const response = await axios.get('https://graphhopper.com/api/1/route', {
-      params: {
-        key: process.env.GRAPHHOPPER_API_KEY || 'demo',
-        points: points.map(p => `${p.lat},${p.lng}`).join('|'),
-        vehicle: 'car',
-        locale: 'en',
-        instructions: true,
-        points_encoded: false
-      }
-    });
-
-    const path = response.data.paths[0];
-
-    return {
-      distance: path.distance / 1609.34, // Convert meters to miles
-      duration: path.time / 60000, // Convert milliseconds to minutes
-      polyline: encodePolyline(path.points.coordinates),
-      steps: path.instructions.map((step: any) => ({
-        instruction: step.text,
-        distance: step.distance / 1609.34,
-        duration: step.time / 60000,
-        startLocation: {
-          lat: step.points[0][1],
-          lng: step.points[0][0]
-        },
-        endLocation: {
-          lat: step.points[1][1],
-          lng: step.points[1][0]
-        }
-      }))
-    };
+    if (routingProvider() === 'graphhopper' && process.env.GRAPHHOPPER_API_KEY) {
+      return await calculateRouteGraphHopper(points);
+    }
+    return await calculateRouteOSRM(points);
   } catch (error) {
     console.error('Route calculation failed:', error);
-    // Return straight-line estimate as fallback
+    // Straight-line estimate so planning still works offline.
     return getStraightLineRoute(origin, destination);
   }
+}
+
+/**
+ * Calculate a full multi-stop road trip as a sequence of legs. Each consecutive
+ * pair of stops becomes its own leg (its own map + distance/time), and the
+ * totals cover the whole adventure.
+ *
+ * Example: [Home, Little Rock, Los Angeles, Moab] -> 3 legs.
+ */
+export async function calculateMultiLegRoute(
+  stops: Coordinates[]
+): Promise<MultiLegRoute> {
+  if (!stops || stops.length < 2) {
+    throw new Error('calculateMultiLegRoute requires at least two stops');
+  }
+
+  const legs: RouteLeg[] = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const from = stops[i];
+    const to = stops[i + 1];
+    const route = await calculateRoute(from, to);
+    legs.push({ from, to, route });
+  }
+
+  const totalDistance = legs.reduce((sum, leg) => sum + leg.route.distance, 0);
+  const totalDuration = legs.reduce((sum, leg) => sum + leg.route.duration, 0);
+
+  return { legs, totalDistance, totalDuration };
+}
+
+async function calculateRouteOSRM(points: Coordinates[]): Promise<RouteResponse> {
+  // OSRM expects lng,lat pairs separated by semicolons.
+  const coords = points.map(p => `${p.lng},${p.lat}`).join(';');
+
+  const response = await axios.get(`${OSRM_BASE}/${coords}`, {
+    params: {
+      overview: 'full',
+      geometries: 'polyline',
+      steps: false,
+    },
+  });
+
+  const data = response.data;
+  if (data.code !== 'Ok' || !data.routes?.length) {
+    throw new Error(`OSRM returned no route (code: ${data.code})`);
+  }
+
+  const route = data.routes[0];
+  const first = points[0];
+  const last = points[points.length - 1];
+
+  return {
+    distance: route.distance / 1609.34, // meters -> miles
+    duration: route.duration / 60, // seconds -> minutes
+    polyline: route.geometry,
+    steps: [
+      {
+        instruction: `Drive ${(route.distance / 1609.34).toFixed(0)} mi`,
+        distance: route.distance / 1609.34,
+        duration: route.duration / 60,
+        startLocation: first,
+        endLocation: last,
+      },
+    ],
+  };
+}
+
+async function calculateRouteGraphHopper(points: Coordinates[]): Promise<RouteResponse> {
+  const response = await axios.get(GRAPHHOPPER_BASE, {
+    params: {
+      key: process.env.GRAPHHOPPER_API_KEY,
+      point: points.map(p => `${p.lat},${p.lng}`),
+      vehicle: 'car',
+      locale: 'en',
+      instructions: true,
+      points_encoded: false,
+    },
+  });
+
+  const path = response.data.paths[0];
+
+  return {
+    distance: path.distance / 1609.34,
+    duration: path.time / 60000,
+    polyline: encodePolyline(path.points.coordinates),
+    steps: (path.instructions || []).map((step: any) => ({
+      instruction: step.text,
+      distance: step.distance / 1609.34,
+      duration: step.time / 60000,
+      startLocation: {
+        lat: step.points[0][1],
+        lng: step.points[0][0],
+      },
+      endLocation: {
+        lat: step.points[1][1],
+        lng: step.points[1][0],
+      },
+    })),
+  };
 }
 
 export async function findPlacesNearRoute(

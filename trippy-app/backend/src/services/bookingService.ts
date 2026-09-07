@@ -28,6 +28,38 @@ export async function generateBookingLinks(
   };
 }
 
+export interface TripStop {
+  location: string; // address or place name for an overnight stop
+  checkIn: string;
+  checkOut?: string;
+}
+
+export interface StopStayLinks {
+  location: string;
+  checkIn: string;
+  checkOut: string;
+  links: BookingLinks;
+}
+
+// Multi-stop lodging: one set of booking links per overnight stop, so a whole
+// road trip (Little Rock -> LA -> Moab) can be booked leg by leg. Free — these
+// are deep links into each provider's own search UI, not a paid API.
+export async function generateStayLinksForStops(
+  stops: TripStop[]
+): Promise<StopStayLinks[]> {
+  const results: StopStayLinks[] = [];
+
+  for (const stop of stops) {
+    if (!stop?.location || !stop.checkIn) continue;
+    const checkIn = formatDate(stop.checkIn);
+    const checkOut = stop.checkOut ? formatDate(stop.checkOut) : getNextDay(stop.checkIn);
+    const links = await generateBookingLinks(stop.location, stop.checkIn, stop.checkOut);
+    results.push({ location: stop.location, checkIn, checkOut, links });
+  }
+
+  return results;
+}
+
 export async function searchAccommodations(
   location: { lat: number; lng: number },
   checkInDate: string,
