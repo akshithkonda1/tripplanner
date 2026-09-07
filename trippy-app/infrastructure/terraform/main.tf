@@ -29,6 +29,7 @@ locals {
     GROK_PLANNING_MODEL = var.grok_planning_model
     GROK_API_URL        = var.grok_api_url
     WEATHER_PROVIDER    = var.weather_provider
+    ROUTING_PROVIDER    = var.routing_provider
     GRAPHHOPPER_API_KEY = var.graphhopper_api_key
   }
 

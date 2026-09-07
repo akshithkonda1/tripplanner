@@ -1,8 +1,40 @@
 import {
   generateBookingLinks,
+  generateStayLinksForStops,
   searchAccommodations,
   getRestaurantRecommendations
 } from '../services/bookingService';
+
+describe('Multi-stop lodging (generateStayLinksForStops)', () => {
+  it('returns one set of booking links per overnight stop', async () => {
+    const result = await generateStayLinksForStops([
+      { location: 'Los Angeles, CA', checkIn: '2024-07-01', checkOut: '2024-07-03' },
+      { location: 'Moab, UT', checkIn: '2024-07-03' }, // checkout defaults to next day
+    ]);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].location).toBe('Los Angeles, CA');
+    expect(result[0].checkIn).toBe('2024-07-01');
+    expect(result[0].checkOut).toBe('2024-07-03');
+    expect(result[0].links).toHaveProperty(['Booking.com']);
+    expect(result[0].links).toHaveProperty(['Airbnb']);
+
+    // Moab's checkout defaults to the day after check-in.
+    expect(result[1].checkIn).toBe('2024-07-03');
+    expect(result[1].checkOut).toBe('2024-07-04');
+    expect(result[1].links['Booking.com']).toContain('Moab');
+  });
+
+  it('skips malformed stops', async () => {
+    const result = await generateStayLinksForStops([
+      { location: '', checkIn: '2024-07-01' },
+      { location: 'Denver, CO', checkIn: '2024-07-02' },
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].location).toBe('Denver, CO');
+  });
+});
 
 describe('Booking Service', () => {
   describe('generateBookingLinks', () => {

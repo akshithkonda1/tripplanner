@@ -137,6 +137,12 @@ variable "weather_provider" {
   default     = "open-meteo"
 }
 
+variable "routing_provider" {
+  description = "Backend routing source. \"osrm\" (free, keyless, default) or \"graphhopper\" (needs graphhopper_api_key). The iOS app uses Apple MapKit natively."
+  type        = string
+  default     = "osrm"
+}
+
 variable "graphhopper_api_key" {
   description = "GraphHopper API key (optional; used for server-side routing)."
   type        = string
