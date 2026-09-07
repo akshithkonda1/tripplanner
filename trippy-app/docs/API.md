@@ -170,11 +170,11 @@ wss://your-ws-api.execute-api.us-east-1.amazonaws.com/production?tripId={tripId}
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/flights/search` | Cheapest-first fare search |
+| GET | `/flights/search` | Travel-hack deep links (Booking.com cheapest-first) — not a paid fare API |
 | POST | `/trips/{tripId}/flights` | Attach a fare to a leg |
 | GET | `/flights/status/{flightNumber}` | Live status for the active leg |
 
-Those flight-search routes are **not** being built. Flight Mode is tickets you log yourself. Sam still plans on Bedrock / on-device.
+Those paid fare-search routes are **not** being built. The iOS Flights tab deep-links Booking.com (`sort=CHEAPEST`), then Kayak / Google Flights / Skyscanner / Momondo, using nearby airports, flex dates, midweek, one-ways, and open-jaw. You log the ticket you bought. Sam still plans on Bedrock / on-device.
 
 ## Error Responses
 

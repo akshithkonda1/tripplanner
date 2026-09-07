@@ -97,4 +97,39 @@ enum AirportDirectory {
                 || $0.name.lowercased().contains(q)
         }
     }
+
+    static func resolve(_ query: String) -> BundledAirport? {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if let exact = all.first(where: { $0.iata.compare(trimmed, options: .caseInsensitive) == .orderedSame }) {
+            return exact
+        }
+
+        let tokens = trimmed.split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        if let first = tokens.first, first.count == 3,
+           let byIata = all.first(where: { $0.iata.compare(first, options: .caseInsensitive) == .orderedSame }) {
+            return byIata
+        }
+
+        let cityHint = trimmed.split(separator: ",").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? trimmed
+        if let byCity = all.first(where: {
+            $0.city.compare(cityHint, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+        }) {
+            return byCity
+        }
+
+        return search(cityHint).first ?? search(trimmed).first
+    }
+
+    static func nearby(to airport: BundledAirport, withinMiles: Double = 90) -> [BundledAirport] {
+        all.filter { other in
+            other.iata != airport.iata
+                && FuelEstimator.haversineMiles(airport.lat, airport.lng, other.lat, other.lng) <= withinMiles
+        }
+        .sorted {
+            FuelEstimator.haversineMiles(airport.lat, airport.lng, $0.lat, $0.lng)
+                < FuelEstimator.haversineMiles(airport.lat, airport.lng, $1.lat, $1.lng)
+        }
+    }
 }
