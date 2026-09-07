@@ -1,0 +1,42 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Node / AWS
+node_modules/
+cdk.out/
+dist/
+coverage/
+*.js.map
+*.log
+
+# iOS
+ios/*.xcodeproj
+ios/*.xcworkspace
+ios/DerivedData/
+**/xcuserdata/
+**/*.xcuserstate
+Pods/
+
+# Android
+android/.gradle/
+android/**/build/
+android/local.properties
+android/.cxx/
+*.iml
+*.apk
+*.aab
+*.keystore
+
+# Python
+__pycache__/
+.venv/

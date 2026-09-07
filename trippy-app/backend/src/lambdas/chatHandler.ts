@@ -2,7 +2,7 @@ import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
-import { bedrockService } from '../services/bedrockService';
+import { getAIProvider } from '../services/aiService';
 import { v4 as uuidv4 } from 'uuid';
 
 const ddbClient = new DynamoDBClient({});
@@ -17,6 +17,7 @@ interface ChatMessage {
 
 interface TripContext {
   tripId: string;
+  travelMode: 'road' | 'flight' | 'hybrid';
   messages: any[];
   itinerary: any[];
   preferences: Record<string, any>;
@@ -54,17 +55,17 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       // Load trip context
       const context = await loadTripContext(tripId);
 
-      // Determine if we need planning (Opus) or chat (Sonnet)
+      // Determine if we need deep planning or quick chat
       const needsPlanning = await determineIntent(message);
 
       let samResponse: string;
 
       if (needsPlanning) {
-        // Use Bedrock Claude for complex planning
-        samResponse = await claudeBedrockPlanning(message, context);
+        // Use the configured AI provider for complex planning
+        samResponse = await generatePlanningResponse(message, context);
       } else {
-        // Use Bedrock Claude Sonnet for quick chat
-        samResponse = await claudeBedrockChat(message, context);
+        // Use the configured AI provider for quick chat
+        samResponse = await generateChatResponse(message, context);
       }
 
       // Save Sam's response
@@ -132,17 +133,23 @@ async function loadTripContext(tripId: string): Promise<TripContext> {
     }
   }));
 
+  const trip = tripResult.Items?.[0];
+  const travelMode = trip?.travelMode === 'flight' || trip?.travelMode === 'hybrid'
+    ? trip.travelMode
+    : 'road';
+
   return {
     tripId,
+    travelMode,
     messages: messagesResult.Items || [],
     itinerary: itineraryResult.Items || [],
-    preferences: tripResult.Items?.[0]?.preferences || {}
+    preferences: trip?.preferences || {}
   };
 }
 
 async function determineIntent(message: string): Promise<boolean> {
   // Simple keyword detection for now
-  // Later: use Claude to classify intent
+  // Later: use the AI provider to classify intent
   const planningKeywords = [
     'plan', 'route', 'itinerary', 'optimize',
     'add stop', 'change', 'modify', 'rearrange'
@@ -153,7 +160,7 @@ async function determineIntent(message: string): Promise<boolean> {
   );
 }
 
-async function claudeBedrockChat(
+async function generateChatResponse(
   message: string,
   context: TripContext
 ): Promise<string> {
@@ -163,10 +170,10 @@ async function claudeBedrockChat(
     { role: 'user' as const, content: message },
   ];
 
-  return bedrockService.chatWithSonnet(messages, systemPrompt, 1000);
+  return getAIProvider().chat(messages, systemPrompt, 1000);
 }
 
-async function claudeBedrockPlanning(
+async function generatePlanningResponse(
   message: string,
   context: TripContext
 ): Promise<string> {
@@ -176,14 +183,27 @@ async function claudeBedrockPlanning(
     { role: 'user' as const, content: message },
   ];
 
-  return bedrockService.planWithOpus(messages, systemPrompt, 4000);
+  return getAIProvider().plan(messages, systemPrompt, 4000);
+}
+
+function modeVoice(travelMode: TripContext['travelMode']): string {
+  if (travelMode === 'flight') {
+    return 'This is Flight Mode: longer trips, city stays, cheap fares, transit — not scenic drives and gas.';
+  }
+  if (travelMode === 'hybrid') {
+    return 'This is a Hybrid trip: treat each leg by its transport (fly, drive, train) and keep one shared budget.';
+  }
+  return 'This is Road Mode: scenic vs. fast driving, fuel, campsites, roadside food.';
 }
 
 function buildChatSystemPrompt(context: TripContext): string {
-  return `You are Sam, a friendly AI road trip planning assistant.
+  return `You are Sam, a friendly AI trip planning assistant.
+
+${modeVoice(context.travelMode)}
 
 Current trip context:
 - Trip ID: ${context.tripId}
+- Travel mode: ${context.travelMode}
 - Current itinerary: ${JSON.stringify(context.itinerary, null, 2)}
 - User preferences: ${JSON.stringify(context.preferences, null, 2)}
 
@@ -197,12 +217,15 @@ Respond naturally and conversationally. Keep responses concise for chat.`;
 }
 
 function buildPlanningSystemPrompt(context: TripContext): string {
-  return `You are Sam, an expert road trip planning assistant.
+  return `You are Sam, an expert trip planning assistant.
+
+${modeVoice(context.travelMode)}
 
 You have access to:
 - Weather forecasts
-- Gas and EV charging prices
-- Route optimization
+- Gas and EV charging prices (Road / Hybrid drive legs)
+- Cheap flight search (Flight / Hybrid air legs)
+- Route optimization and city-stay structure
 - Accommodation options
 
 Current trip:

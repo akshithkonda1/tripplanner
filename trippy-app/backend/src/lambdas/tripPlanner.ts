@@ -1,5 +1,5 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import { bedrockService } from '../services/bedrockService';
+import { getAIProvider } from '../services/aiService';
 import { getWeatherForecast } from '../services/weatherService';
 import { getGasPrices, getEVCharging } from '../services/fuelService';
 import { generateBookingLinks } from '../services/bookingService';
@@ -10,12 +10,17 @@ interface Location {
   name: string;
 }
 
+type TravelMode = 'road' | 'flight' | 'hybrid';
+
 interface TripPlanRequest {
   origin: Location;
   destination: Location;
   startDate: string;
   endDate: string;
-  tripType: 'family' | 'couple' | 'solo';
+  tripType: 'family' | 'couple' | 'solo' | 'friends';
+  travelMode?: TravelMode;
+  datesFlexible?: boolean;
+  legs?: Array<{ transport?: string; from?: { name?: string }; to?: { name?: string } }>;
   preferences: {
     budget?: number;
     interests?: string[];
@@ -70,12 +75,20 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       request.endDate
     );
 
-    // Step 2: Get fuel pricing
-    const gasPrices = await getGasPrices(request.origin, request.destination);
-    const evCharging = await getEVCharging(request.origin, request.destination);
+    const travelMode = request.travelMode === 'flight' || request.travelMode === 'hybrid'
+      ? request.travelMode
+      : 'road';
 
-    // Step 3: Use Bedrock Claude to plan the trip
-    const itinerary = await planTripWithBedrock(request, weather, gasPrices, evCharging);
+    // Step 2: Fuel pricing only matters on drive legs
+    const gasPrices = travelMode === 'flight'
+      ? null
+      : await getGasPrices(request.origin, request.destination);
+    const evCharging = travelMode === 'flight'
+      ? null
+      : await getEVCharging(request.origin, request.destination);
+
+    // Step 3: Use the configured AI provider to plan the trip
+    const itinerary = await planTripWithAI(request, weather, gasPrices, evCharging, travelMode);
 
     // Step 4: Add booking links
     const itineraryWithLinks = await addBookingLinks(itinerary);
@@ -102,34 +115,47 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 };
 
-async function planTripWithBedrock(
+async function planTripWithAI(
   request: TripPlanRequest,
   weather: any,
   gasPrices: any,
-  evCharging: any
+  evCharging: any,
+  travelMode: TravelMode
 ): Promise<Itinerary> {
-  const prompt = `Plan a ${request.tripType} road trip from ${request.origin.name} to ${request.destination.name}.
+  const modeInstructions = {
+    road: `Plan a ${request.tripType} road trip from ${request.origin.name} to ${request.destination.name}.
+Optimize the drive (scenic vs. fast), roadside meals, campsites/motels, fuel stops, and travel times.`,
+    flight: `Plan a longer ${request.tripType} trip from ${request.origin.name} to ${request.destination.name} in Flight Mode.
+Group the itinerary by city stay (nights in a place), not driving days. Prefer cheap fares, hostels, and local transit over rental cars.
+${request.datesFlexible ? 'Dates are flexible by ±3 days — pick the cheaper window.' : ''}
+Legs: ${JSON.stringify(request.legs || [])}`,
+    hybrid: `Plan a hybrid ${request.tripType} trip from ${request.origin.name} to ${request.destination.name}.
+Treat each leg by its transport type (fly, drive, train). Keep one shared budget. Mix flight arcs and driving days.`
+  }[travelMode];
+
+  const prompt = `${modeInstructions}
 
 Trip Details:
+- Travel mode: ${travelMode}
 - Dates: ${request.startDate} to ${request.endDate}
 - Participants: ${request.participants || 1}
-- Budget: ${request.preferences.budget ? `$${request.preferences.budget}/day` : 'Flexible'}
+- Budget: ${request.preferences.budget ? `$${request.preferences.budget}` : 'Shoestring / flexible'}
 - Pace: ${request.preferences.pace || 'moderate'}
 - Interests: ${request.preferences.interests?.join(', ') || 'General sightseeing'}
 
 Weather Forecast:
 ${JSON.stringify(weather, null, 2)}
 
-Fuel Information:
+Fuel Information (ignore for pure flight trips):
 Gas Prices: ${JSON.stringify(gasPrices, null, 2)}
 EV Charging: ${JSON.stringify(evCharging, null, 2)}
 
 Create a detailed day-by-day itinerary with:
-1. Route optimization (scenic vs. fast)
-2. Recommended stops (meals, attractions, rest breaks)
+1. Route or city-stay structure appropriate to the travel mode
+2. Recommended stops (meals, attractions, rest / layover)
 3. Accommodation suggestions for each night
 4. Activity recommendations
-5. Estimated costs
+5. Estimated costs (include flights when travelMode is flight or hybrid)
 6. Travel times between stops
 
 Format your response as structured JSON with this schema:
@@ -144,7 +170,7 @@ Format your response as structured JSON with this schema:
       "date": "YYYY-MM-DD",
       "items": [
         {
-          "type": "drive" | "meal" | "activity" | "accommodation",
+          "type": "drive" | "flight" | "meal" | "activity" | "accommodation" | "transit",
           "name": "string",
           "location": { "lat": number, "lng": number, "address": "string" },
           "startTime": "HH:MM",
@@ -158,7 +184,7 @@ Format your response as structured JSON with this schema:
   ]
 }`;
 
-  const response = await bedrockService.planWithOpus(
+  const response = await getAIProvider().plan(
     [{ role: 'user', content: prompt }],
     undefined,
     4000
@@ -174,7 +200,7 @@ Format your response as structured JSON with this schema:
   try {
     return JSON.parse(response);
   } catch {
-    throw new Error('Failed to parse Claude response as JSON');
+    throw new Error('Failed to parse AI response as JSON');
   }
 }
 

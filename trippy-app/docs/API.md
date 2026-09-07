@@ -22,6 +22,10 @@ Create a new trip
   "startDate": "2024-07-01",
   "endDate": "2024-07-10",
   "tripType": "family",
+  "travelMode": "road",
+  "datesFlexible": false,
+  "legs": [],
+  "homeCurrency": "USD",
   "preferences": {
     "budget": 2000,
     "interests": ["food", "nature"],
@@ -37,9 +41,27 @@ Create a new trip
   "trip": {
     "tripId": "uuid-here",
     "tripName": "Summer Road Trip",
+    "travelMode": "road",
     "status": "planning",
     "createdAt": 1234567890
   }
+}
+```
+
+### GET /trips
+List the signed-in user's trips. Each item includes `travelMode` (`road` | `flight` | `hybrid`).
+
+**Response:**
+```json
+{
+  "trips": [
+    {
+      "tripId": "uuid-here",
+      "tripName": "Two weeks in Japan",
+      "travelMode": "flight",
+      "status": "planning"
+    }
+  ]
 }
 ```
 
@@ -57,6 +79,7 @@ Get trip details
     "startDate": "2024-07-01",
     "endDate": "2024-07-10",
     "status": "planning",
+    "travelMode": "road",
     "participants": ["user-1", "user-2"]
   }
 }
@@ -143,6 +166,16 @@ wss://your-ws-api.execute-api.us-east-1.amazonaws.com/production?tripId={tripId}
 }
 ```
 
+`travelMode` is `road` | `flight` | `hybrid` and defaults to `road`. Flight Mode also uses:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/flights/search` | Cheapest-first fare search |
+| POST | `/trips/{tripId}/flights` | Attach a fare to a leg |
+| GET | `/flights/status/{flightNumber}` | Live status for the active leg |
+
+Those flight-search routes are **not** being built. Flight Mode is tickets you log yourself. Sam still plans on Bedrock / on-device.
+
 ## Error Responses
 
 All endpoints return errors in this format:
@@ -160,10 +193,13 @@ Common HTTP status codes:
 
 ## Authentication
 
-All requests require a valid JWT token in the Authorization header:
+Amazon Cognito User Pool issues the JWT. The HTTP API authorizer expects:
+
 ```
-Authorization: Bearer <jwt-token>
+Authorization: Bearer <cognito-id-token>
 ```
+
+Guest mode on iOS does not call these routes.
 
 ## Rate Limits
 
