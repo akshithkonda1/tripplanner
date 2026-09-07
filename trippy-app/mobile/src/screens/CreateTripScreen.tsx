@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -6,17 +6,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert
+  Alert,
 } from 'react-native';
-import { api } from '../services/api';
+import {api} from '../services/api';
+import {getUserId} from '../services/user';
 
-export const CreateTripScreen: React.FC<any> = ({ navigation }) => {
+export const CreateTripScreen: React.FC<any> = ({navigation}) => {
   const [tripName, setTripName] = useState('');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [tripType, setTripType] = useState<'family' | 'couple' | 'solo'>('solo');
+  const [tripType, setTripType] = useState<'family' | 'couple' | 'solo'>(
+    'solo',
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const handleCreateTrip = async () => {
@@ -34,26 +37,36 @@ export const CreateTripScreen: React.FC<any> = ({ navigation }) => {
         tripName,
         origin: {
           lat: 40.7128,
-          lng: -74.0060,
-          name: origin
+          lng: -74.006,
+          name: origin,
         },
         destination: {
           lat: 34.0522,
           lng: -118.2437,
-          name: destination
+          name: destination,
         },
         startDate,
         endDate,
         tripType,
-        preferences: {}
+        preferences: {},
       });
 
-      Alert.alert('Success', 'Trip created! Start chatting with Sam to plan your route.');
+      Alert.alert(
+        'Success',
+        'Trip created! Start chatting with Sam to plan your route.',
+      );
 
-      // Navigate to chat screen
-      navigation.navigate('Chat', {
-        tripId: trip.tripId,
-        userId: 'current-user-id' // Get from auth
+      const userId = await getUserId();
+
+      // Chat and Map live inside the TripTabs tab navigator, so the target
+      // screen has to be addressed through it.
+      navigation.navigate('TripTabs', {
+        screen: 'Chat',
+        params: {
+          tripId: trip.tripId,
+          userId,
+          tripName: trip.tripName,
+        },
       });
     } catch (error) {
       console.error('Failed to create trip:', error);
@@ -110,21 +123,19 @@ export const CreateTripScreen: React.FC<any> = ({ navigation }) => {
 
         <Text style={styles.label}>Trip Type</Text>
         <View style={styles.tripTypeContainer}>
-          {(['solo', 'couple', 'family'] as const).map((type) => (
+          {(['solo', 'couple', 'family'] as const).map(type => (
             <TouchableOpacity
               key={type}
               style={[
                 styles.tripTypeButton,
-                tripType === type && styles.tripTypeButtonActive
+                tripType === type && styles.tripTypeButtonActive,
               ]}
-              onPress={() => setTripType(type)}
-            >
+              onPress={() => setTripType(type)}>
               <Text
                 style={[
                   styles.tripTypeText,
-                  tripType === type && styles.tripTypeTextActive
-                ]}
-              >
+                  tripType === type && styles.tripTypeTextActive,
+                ]}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
               </Text>
             </TouchableOpacity>
@@ -132,10 +143,12 @@ export const CreateTripScreen: React.FC<any> = ({ navigation }) => {
         </View>
 
         <TouchableOpacity
-          style={[styles.createButton, isLoading && styles.createButtonDisabled]}
+          style={[
+            styles.createButton,
+            isLoading && styles.createButtonDisabled,
+          ]}
           onPress={handleCreateTrip}
-          disabled={isLoading}
-        >
+          disabled={isLoading}>
           <Text style={styles.createButtonText}>
             {isLoading ? 'Creating...' : 'Create Trip & Chat with Sam'}
           </Text>
@@ -149,22 +162,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    padding: 20
+    padding: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 30,
-    color: '#333'
+    color: '#333',
   },
   form: {
-    marginBottom: 30
+    marginBottom: 30,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
-    color: '#555'
+    color: '#555',
   },
   input: {
     borderWidth: 1,
@@ -173,12 +186,12 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     marginBottom: 20,
-    backgroundColor: '#fafafa'
+    backgroundColor: '#fafafa',
   },
   tripTypeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30
+    marginBottom: 30,
   },
   tripTypeButton: {
     flex: 1,
@@ -187,32 +200,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     marginHorizontal: 4,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   tripTypeButtonActive: {
     backgroundColor: '#007AFF',
-    borderColor: '#007AFF'
+    borderColor: '#007AFF',
   },
   tripTypeText: {
     fontSize: 14,
-    color: '#555'
+    color: '#555',
   },
   tripTypeTextActive: {
     color: '#fff',
-    fontWeight: '600'
+    fontWeight: '600',
   },
   createButton: {
     backgroundColor: '#007AFF',
     padding: 16,
     borderRadius: 8,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   createButtonDisabled: {
-    opacity: 0.5
+    opacity: 0.5,
   },
   createButtonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600'
-  }
+    fontWeight: '600',
+  },
 });

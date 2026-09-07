@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, Alert } from 'react-native';
+import {Platform} from 'react-native';
 
 // Note: In production, use react-native-push-notification or expo-notifications
 // This is a simplified implementation showing the structure
@@ -38,7 +38,7 @@ class NotificationService {
     reminders: true,
     quietHoursEnabled: false,
     quietHoursStart: '22:00',
-    quietHoursEnd: '08:00'
+    quietHoursEnd: '08:00',
   };
 
   async initialize(): Promise<void> {
@@ -89,18 +89,29 @@ class NotificationService {
     return this.preferences;
   }
 
-  async savePreferences(preferences: Partial<NotificationPreferences>): Promise<void> {
-    this.preferences = { ...this.preferences, ...preferences };
-    await AsyncStorage.setItem(PREFERENCES_KEY, JSON.stringify(this.preferences));
+  async savePreferences(
+    preferences: Partial<NotificationPreferences>,
+  ): Promise<void> {
+    this.preferences = {...this.preferences, ...preferences};
+    await AsyncStorage.setItem(
+      PREFERENCES_KEY,
+      JSON.stringify(this.preferences),
+    );
   }
 
   getPreferences(): NotificationPreferences {
     return this.preferences;
   }
 
-  shouldShowNotification(type: NotificationPayload['data']['type']): boolean {
-    if (!this.preferences.enabled) return false;
-    if (this.isQuietHours()) return false;
+  shouldShowNotification(
+    type: NonNullable<NotificationPayload['data']>['type'],
+  ): boolean {
+    if (!this.preferences.enabled) {
+      return false;
+    }
+    if (this.isQuietHours()) {
+      return false;
+    }
 
     switch (type) {
       case 'message':
@@ -117,13 +128,19 @@ class NotificationService {
   }
 
   private isQuietHours(): boolean {
-    if (!this.preferences.quietHoursEnabled) return false;
+    if (!this.preferences.quietHoursEnabled) {
+      return false;
+    }
 
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-    const [startHour, startMin] = this.preferences.quietHoursStart.split(':').map(Number);
-    const [endHour, endMin] = this.preferences.quietHoursEnd.split(':').map(Number);
+    const [startHour, startMin] = this.preferences.quietHoursStart
+      .split(':')
+      .map(Number);
+    const [endHour, endMin] = this.preferences.quietHoursEnd
+      .split(':')
+      .map(Number);
 
     const startMinutes = startHour * 60 + startMin;
     const endMinutes = endHour * 60 + endMin;
@@ -138,7 +155,7 @@ class NotificationService {
 
   async scheduleLocalNotification(
     notification: NotificationPayload,
-    triggerTime: Date
+    triggerTime: Date,
   ): Promise<void> {
     // In production, use actual scheduling
     console.log('Scheduling notification:', notification, 'at', triggerTime);
@@ -168,13 +185,13 @@ class NotificationService {
   async scheduleTripReminders(
     tripId: string,
     tripName: string,
-    startDate: Date
+    startDate: Date,
   ): Promise<void> {
     const reminders = [
-      { days: 7, message: 'Your trip is in 1 week!' },
-      { days: 3, message: 'Your trip is in 3 days!' },
-      { days: 1, message: 'Your trip starts tomorrow!' },
-      { days: 0, message: 'Your trip starts today! Have fun!' }
+      {days: 7, message: 'Your trip is in 1 week!'},
+      {days: 3, message: 'Your trip is in 3 days!'},
+      {days: 1, message: 'Your trip starts tomorrow!'},
+      {days: 0, message: 'Your trip starts today! Have fun!'},
     ];
 
     for (const reminder of reminders) {
@@ -190,10 +207,10 @@ class NotificationService {
             body: reminder.message,
             data: {
               tripId,
-              type: 'reminder'
-            }
+              type: 'reminder',
+            },
           },
-          triggerDate
+          triggerDate,
         );
       }
     }

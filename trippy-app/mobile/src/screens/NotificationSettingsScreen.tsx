@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Switch,
   ScrollView,
-  TouchableOpacity
+  TouchableOpacity,
 } from 'react-native';
 import {
   notificationService,
-  NotificationPreferences
+  NotificationPreferences,
 } from '../services/notifications';
 
 export const NotificationSettingsScreen: React.FC = () => {
   const [preferences, setPreferences] = useState<NotificationPreferences>(
-    notificationService.getPreferences()
+    notificationService.getPreferences(),
   );
 
   useEffect(() => {
@@ -28,18 +28,18 @@ export const NotificationSettingsScreen: React.FC = () => {
 
   const updatePreference = async (
     key: keyof NotificationPreferences,
-    value: boolean | string
+    value: boolean | string,
   ) => {
-    const newPrefs = { ...preferences, [key]: value };
+    const newPrefs = {...preferences, [key]: value};
     setPreferences(newPrefs);
-    await notificationService.savePreferences({ [key]: value });
+    await notificationService.savePreferences({[key]: value});
   };
 
   const renderToggle = (
     title: string,
     subtitle: string,
     key: keyof NotificationPreferences,
-    disabled: boolean = false
+    disabled: boolean = false,
   ) => (
     <View style={[styles.settingRow, disabled && styles.settingRowDisabled]}>
       <View style={styles.settingInfo}>
@@ -52,9 +52,9 @@ export const NotificationSettingsScreen: React.FC = () => {
       </View>
       <Switch
         value={preferences[key] as boolean}
-        onValueChange={(value) => updatePreference(key, value)}
+        onValueChange={value => updatePreference(key, value)}
         disabled={disabled || !preferences.enabled}
-        trackColor={{ false: '#e0e0e0', true: '#81D4FA' }}
+        trackColor={{false: '#e0e0e0', true: '#81D4FA'}}
         thumbColor={preferences[key] ? '#007AFF' : '#f4f3f4'}
       />
     </View>
@@ -67,7 +67,7 @@ export const NotificationSettingsScreen: React.FC = () => {
         {renderToggle(
           'Push Notifications',
           'Enable or disable all notifications',
-          'enabled'
+          'enabled',
         )}
       </View>
 
@@ -77,25 +77,25 @@ export const NotificationSettingsScreen: React.FC = () => {
           'Messages',
           'New messages from trip participants',
           'messages',
-          !preferences.enabled
+          !preferences.enabled,
         )}
         {renderToggle(
           'Itinerary Updates',
           'When Sam updates your trip itinerary',
           'itineraryUpdates',
-          !preferences.enabled
+          !preferences.enabled,
         )}
         {renderToggle(
           'Trip Invites',
           'When someone invites you to a trip',
           'tripInvites',
-          !preferences.enabled
+          !preferences.enabled,
         )}
         {renderToggle(
           'Reminders',
           'Trip countdown and departure reminders',
           'reminders',
-          !preferences.enabled
+          !preferences.enabled,
         )}
       </View>
 
@@ -105,14 +105,16 @@ export const NotificationSettingsScreen: React.FC = () => {
           'Enable Quiet Hours',
           'Silence notifications during set times',
           'quietHoursEnabled',
-          !preferences.enabled
+          !preferences.enabled,
         )}
 
         {preferences.quietHoursEnabled && preferences.enabled && (
           <View style={styles.timeSection}>
             <TouchableOpacity style={styles.timeRow}>
               <Text style={styles.timeLabel}>Start Time</Text>
-              <Text style={styles.timeValue}>{preferences.quietHoursStart}</Text>
+              <Text style={styles.timeValue}>
+                {preferences.quietHoursStart}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.timeRow}>
               <Text style={styles.timeLabel}>End Time</Text>
@@ -136,19 +138,19 @@ export const NotificationSettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: '#f5f5f5',
   },
   section: {
     backgroundColor: '#fff',
     marginTop: 20,
-    paddingHorizontal: 16
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#666',
     paddingVertical: 12,
-    textTransform: 'uppercase'
+    textTransform: 'uppercase',
   },
   settingRow: {
     flexDirection: 'row',
@@ -156,29 +158,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0'
+    borderBottomColor: '#f0f0f0',
   },
   settingRowDisabled: {
-    opacity: 0.5
+    opacity: 0.5,
   },
   settingInfo: {
     flex: 1,
-    marginRight: 16
+    marginRight: 16,
   },
   settingTitle: {
     fontSize: 16,
-    color: '#333'
+    color: '#333',
   },
   settingSubtitle: {
     fontSize: 13,
     color: '#666',
-    marginTop: 2
+    marginTop: 2,
   },
   textDisabled: {
-    color: '#999'
+    color: '#999',
   },
   timeSection: {
-    paddingBottom: 12
+    paddingBottom: 12,
   },
   timeRow: {
     flexDirection: 'row',
@@ -186,23 +188,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0'
+    borderBottomColor: '#f0f0f0',
   },
   timeLabel: {
     fontSize: 16,
-    color: '#333'
+    color: '#333',
   },
   timeValue: {
     fontSize: 16,
-    color: '#007AFF'
+    color: '#007AFF',
   },
   infoSection: {
-    padding: 20
+    padding: 20,
   },
   infoText: {
     fontSize: 13,
     color: '#666',
     lineHeight: 18,
-    textAlign: 'center'
-  }
+    textAlign: 'center',
+  },
 });

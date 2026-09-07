@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Modal,
   FlatList,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
@@ -29,7 +29,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   visible,
   onClose,
   onInvite,
-  onShareLink
+  onShareLink,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -45,23 +45,23 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     setIsSearching(true);
     // Simulate API call
     setTimeout(() => {
-      setContacts([
-        { id: '1', name: 'John Doe', email: 'john@example.com' },
-        { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
-        { id: '3', name: 'Bob Wilson', email: 'bob@example.com' }
-      ].filter(c =>
-        c.name.toLowerCase().includes(query.toLowerCase()) ||
-        c.email.toLowerCase().includes(query.toLowerCase())
-      ));
+      setContacts(
+        [
+          {id: '1', name: 'John Doe', email: 'john@example.com'},
+          {id: '2', name: 'Jane Smith', email: 'jane@example.com'},
+          {id: '3', name: 'Bob Wilson', email: 'bob@example.com'},
+        ].filter(
+          c =>
+            c.name.toLowerCase().includes(query.toLowerCase()) ||
+            c.email.toLowerCase().includes(query.toLowerCase()),
+        ),
+      );
       setIsSearching(false);
     }, 500);
   };
 
-  const renderContact = ({ item }: { item: Contact }) => (
-    <TouchableOpacity
-      style={styles.contactItem}
-      onPress={() => onInvite(item)}
-    >
+  const renderContact = ({item}: {item: Contact}) => (
+    <TouchableOpacity style={styles.contactItem} onPress={() => onInvite(item)}>
       <View style={styles.contactAvatar}>
         <Text style={styles.contactInitial}>
           {item.name.charAt(0).toUpperCase()}
@@ -80,8 +80,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
+      onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose}>
@@ -92,7 +91,12 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         </View>
 
         <View style={styles.searchContainer}>
-          <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
+          <Icon
+            name="search"
+            size={20}
+            color="#999"
+            style={styles.searchIcon}
+          />
           <TextInput
             style={styles.searchInput}
             placeholder="Search by name or email"
@@ -101,9 +105,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             autoCapitalize="none"
             autoCorrect={false}
           />
-          {isSearching && (
-            <ActivityIndicator size="small" color="#007AFF" />
-          )}
+          {isSearching && <ActivityIndicator size="small" color="#007AFF" />}
         </View>
 
         <TouchableOpacity style={styles.shareLinkButton} onPress={onShareLink}>
@@ -123,7 +125,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           <FlatList
             data={contacts}
             renderItem={renderContact}
-            keyExtractor={(item) => item.id}
+            keyExtractor={item => item.id}
             contentContainerStyle={styles.contactList}
           />
         ) : searchQuery.length >= 2 && !isSearching ? (
@@ -143,7 +145,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -152,19 +154,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee'
+    borderBottomColor: '#eee',
   },
   cancelButton: {
     fontSize: 16,
-    color: '#007AFF'
+    color: '#007AFF',
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333'
+    color: '#333',
   },
   placeholder: {
-    width: 50
+    width: 50,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -172,15 +174,15 @@ const styles = StyleSheet.create({
     margin: 16,
     paddingHorizontal: 12,
     backgroundColor: '#f5f5f5',
-    borderRadius: 10
+    borderRadius: 10,
   },
   searchIcon: {
-    marginRight: 8
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
     paddingVertical: 12,
-    fontSize: 16
+    fontSize: 16,
   },
   shareLinkButton: {
     flexDirection: 'row',
@@ -188,21 +190,21 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     padding: 16,
     backgroundColor: '#f8f8f8',
-    borderRadius: 12
+    borderRadius: 12,
   },
   shareLinkContent: {
     flex: 1,
-    marginLeft: 12
+    marginLeft: 12,
   },
   shareLinkTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333'
+    color: '#333',
   },
   shareLinkSubtitle: {
     fontSize: 12,
     color: '#666',
-    marginTop: 2
+    marginTop: 2,
   },
   sectionTitle: {
     fontSize: 14,
@@ -210,17 +212,17 @@ const styles = StyleSheet.create({
     color: '#666',
     marginHorizontal: 16,
     marginTop: 24,
-    marginBottom: 12
+    marginBottom: 12,
   },
   contactList: {
-    paddingHorizontal: 16
+    paddingHorizontal: 16,
   },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0'
+    borderBottomColor: '#f0f0f0',
   },
   contactAvatar: {
     width: 44,
@@ -228,43 +230,43 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: '#007AFF',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   contactInitial: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff'
+    color: '#fff',
   },
   contactInfo: {
     flex: 1,
-    marginLeft: 12
+    marginLeft: 12,
   },
   contactName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333'
+    color: '#333',
   },
   contactEmail: {
     fontSize: 14,
     color: '#666',
-    marginTop: 2
+    marginTop: 2,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40
+    paddingHorizontal: 40,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
-    marginTop: 16
+    marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    marginTop: 8
-  }
+    marginTop: 8,
+  },
 });

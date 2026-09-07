@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
@@ -27,7 +27,7 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
   tripName,
   participants,
   onAddParticipant,
-  onViewDetails
+  onViewDetails,
 }) => {
   const onlineCount = participants.filter(p => p.isOnline).length;
 
@@ -43,15 +43,11 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.avatarScroll}
-      >
-        {participants.slice(0, 5).map((participant) => (
+        style={styles.avatarScroll}>
+        {participants.slice(0, 5).map(participant => (
           <View key={participant.id} style={styles.avatarContainer}>
             {participant.avatar ? (
-              <Image
-                source={{ uri: participant.avatar }}
-                style={styles.avatar}
-              />
+              <Image source={{uri: participant.avatar}} style={styles.avatar} />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder]}>
                 <Text style={styles.avatarInitial}>
@@ -71,8 +67,7 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
 
         <TouchableOpacity
           style={[styles.avatar, styles.addButton]}
-          onPress={onAddParticipant}
-        >
+          onPress={onAddParticipant}>
           <Icon name="add" size={20} color="#007AFF" />
         </TouchableOpacity>
       </ScrollView>
@@ -86,43 +81,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee'
+    borderBottomColor: '#eee',
   },
   titleSection: {
-    marginBottom: 12
+    marginBottom: 12,
   },
   tripName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333'
+    color: '#333',
   },
   participantCount: {
     fontSize: 12,
     color: '#666',
-    marginTop: 2
+    marginTop: 2,
   },
   avatarScroll: {
-    flexDirection: 'row'
+    flexDirection: 'row',
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 8
+    marginRight: 8,
   },
   avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f0f0f0'
+    backgroundColor: '#f0f0f0',
   },
   avatarPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#007AFF'
+    backgroundColor: '#007AFF',
   },
   avatarInitial: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600'
+    fontWeight: '600',
   },
   onlineIndicator: {
     position: 'absolute',
@@ -133,24 +128,24 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#4CD964',
     borderWidth: 2,
-    borderColor: '#fff'
+    borderColor: '#fff',
   },
   moreAvatar: {
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#e0e0e0',
-    marginRight: 8
+    marginRight: 8,
   },
   moreText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666'
+    color: '#666',
   },
   addButton: {
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#007AFF',
-    borderStyle: 'dashed'
-  }
+    borderStyle: 'dashed',
+  },
 });
