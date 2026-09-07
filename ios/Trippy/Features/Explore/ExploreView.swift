@@ -11,8 +11,8 @@ struct ExploreView: View {
                 }
                 Section("Longer trips") {
                     Text("Use the bundled airport list, then buy the ticket on the airline site you trust.")
-                    Text("Hostels and night trains: search yourself, then log the confirmation on the trip.")
-                    Text("Sam will pace city stays if you ask — still no fare API.")
+                    Text("Stays: free camps first, then Hostelworld, then Booking.com sorted by price (most beds).")
+                    Text("Sam will pace city stays if you ask.")
                 }
             }
             .scrollContentBackground(.hidden)

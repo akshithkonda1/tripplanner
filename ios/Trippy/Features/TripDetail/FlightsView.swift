@@ -87,22 +87,10 @@ struct FlightsView: View {
                     .disabled(airline.isEmpty || number.isEmpty || from.isEmpty || to.isEmpty)
                 }
 
-                Section("Stays you booked yourself") {
-                    ForEach(workspace.stayNotes) { stay in
-                        Text("\(stay.place) · \(stay.city) · \(stay.nights) nights")
-                    }
-                    Button("Add a hostel / stay note") {
-                        workspace.stayNotes.append(
-                            StayNote(
-                                id: UUID().uuidString,
-                                city: workspace.trip.destination.name,
-                                place: "Hostel / friend / camp",
-                                confirmation: "",
-                                nights: 2
-                            )
-                        )
-                        store.update(workspace)
-                    }
+                Section("Stays") {
+                    Text("Use the Stays tab — Booking.com cheapest-first, hostels, then free camps. Log the confirmation there after you book.")
+                        .font(.footnote)
+                        .foregroundStyle(TrippyTheme.muted)
                 }
             }
             .scrollContentBackground(.hidden)

@@ -21,11 +21,12 @@ Sam (the AI co-pilot), group chat, itinerary, budget, and maps are shared across
 | **Cloud** | AWS Lambda · API Gateway · DynamoDB · Cognito · Bedrock |
 | **AI** | Amazon Bedrock (Claude) — Sam plans on AWS compute, not a travel-vendor API |
 | **Auth** | **Amazon Cognito** (email/password; Sign in with Apple can federate later) |
-| **Maps / device** | MapKit · SwiftData — no Skyscanner, Amadeus, GasBuddy, or weather APIs |
+| **Maps / device** | MapKit · SwiftData |
+| **Stays** | **Booking.com** (most inventory / usage, sorted by price) plus Hostelworld, Airbnb, free-camp directories |
 
 **iOS first.** We build and perfect the Swift app, then port the same product to Kotlin. Android under `android/` stays a scaffold until iOS is the source of truth.
 
-**No third-party travel APIs.** Flight Mode, fuel, lodging notes, and Explore are on-device (what you type, MapKit, a bundled airport list) plus AWS for identity, storage, and Sam. You log a flight or a hostel yourself; we do not scrape or buy fares.
+**As cheap as possible — free first, then the sites people actually use.** Stays open Booking.com (price order), Hostelworld, and Airbnb. Above those: free or nearly free (public land, free campsites, Couchsurfing). We do not pay for a partner API; we deep-link the consumer sites so you get their full inventory and their cheapest sort. You still log the confirmation on the trip after you book.
 
 ---
 
@@ -74,8 +75,15 @@ Realtime messages, typing indicators, @Sam in the thread, add/remove people.
 ### 8. Budget
 Flights, fuel, food, lodging, activities, transit. Split with the group. Multi-currency on Flight Mode.
 
-### 9. Stays you log
-No hotel/flight booking APIs. Save a hostel name, confirmation, and cost onto the itinerary yourself.
+### 9. Cheap stays (Booking.com and friends)
+A **Stays** tab ranked **free → hostel → cheapest hotel**:
+
+1. Free / nearly free (free campsites, Recreation.gov, Couchsurfing)
+2. Hostelworld
+3. Booking.com hostels, then **Booking.com everything sorted by price** (most usage, most beds)
+4. Airbnb, Hotels.com as extras
+
+Tap opens the live site with your city and dates. After you book, save the confirmation on the trip.
 
 ### 10. Fuel (Road / Hybrid drive legs)
 Local estimate: MapKit distance × your MPG × a price you type. No station-price API.
@@ -113,6 +121,7 @@ Tabs
 │       ├── Itinerary
 │       ├── Map
 │       ├── Flights   (Flight / Hybrid)
+│       ├── Stays     (Booking.com cheapest-first, then free options)
 │       ├── Budget
 │       └── Chat
 ├── Explore       roadside stops, or cheap destinations in Flight Mode
