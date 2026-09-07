@@ -1,17 +1,19 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, {useEffect, useRef} from 'react';
+import {View, Text, StyleSheet, Animated} from 'react-native';
 
 interface TypingIndicatorProps {
   users: string[];
 }
 
-export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ users }) => {
+export const TypingIndicator: React.FC<TypingIndicatorProps> = ({users}) => {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (users.length === 0) return;
+    if (users.length === 0) {
+      return;
+    }
 
     const animateDot = (dot: Animated.Value, delay: number) => {
       return Animated.loop(
@@ -20,21 +22,21 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ users }) => {
           Animated.timing(dot, {
             toValue: 1,
             duration: 300,
-            useNativeDriver: true
+            useNativeDriver: true,
           }),
           Animated.timing(dot, {
             toValue: 0,
             duration: 300,
-            useNativeDriver: true
-          })
-        ])
+            useNativeDriver: true,
+          }),
+        ]),
       );
     };
 
     const animation = Animated.parallel([
       animateDot(dot1, 0),
       animateDot(dot2, 150),
-      animateDot(dot3, 300)
+      animateDot(dot3, 300),
     ]);
 
     animation.start();
@@ -42,7 +44,9 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ users }) => {
     return () => animation.stop();
   }, [users.length, dot1, dot2, dot3]);
 
-  if (users.length === 0) return null;
+  if (users.length === 0) {
+    return null;
+  }
 
   const getTypingText = () => {
     if (users.length === 1) {
@@ -59,14 +63,14 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ users }) => {
       {
         translateY: animatedValue.interpolate({
           inputRange: [0, 1],
-          outputRange: [0, -4]
-        })
-      }
+          outputRange: [0, -4],
+        }),
+      },
     ],
     opacity: animatedValue.interpolate({
       inputRange: [0, 1],
-      outputRange: [0.4, 1]
-    })
+      outputRange: [0.4, 1],
+    }),
   });
 
   return (
@@ -87,22 +91,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#f8f8f8'
+    backgroundColor: '#f8f8f8',
   },
   text: {
     fontSize: 12,
     color: '#666',
-    marginRight: 8
+    marginRight: 8,
   },
   dotsContainer: {
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   dot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: '#666',
-    marginHorizontal: 2
-  }
+    marginHorizontal: 2,
+  },
 });

@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   Linking,
-  Image
 } from 'react-native';
 
 interface BookingScreenProps {
@@ -27,17 +26,19 @@ interface BookingScreenProps {
   };
 }
 
-const PLATFORM_LOGOS: Record<string, any> = {
-  booking: require('../assets/booking-logo.png'),
-  expedia: require('../assets/expedia-logo.png'),
-  marriott: require('../assets/marriott-logo.png'),
-  hyatt: require('../assets/hyatt-logo.png'),
-  ihg: require('../assets/ihg-logo.png'),
-  viator: require('../assets/viator-logo.png')
+// No logo image assets are bundled yet, so each platform gets a colored
+// initial badge instead of require()-ing images that don't exist.
+const PLATFORM_STYLE: Record<string, {label: string; color: string}> = {
+  booking: {label: 'B', color: '#003580'},
+  expedia: {label: 'E', color: '#FFC72C'},
+  marriott: {label: 'M', color: '#8A1538'},
+  hyatt: {label: 'H', color: '#4B2E83'},
+  ihg: {label: 'I', color: '#5A2D81'},
+  viator: {label: 'V', color: '#FF5722'},
 };
 
-export const BookingScreen: React.FC<BookingScreenProps> = ({ route }) => {
-  const { location, checkIn, checkOut, bookingLinks } = route.params;
+export const BookingScreen: React.FC<BookingScreenProps> = ({route}) => {
+  const {location, checkIn, checkOut, bookingLinks} = route.params;
 
   const openBookingLink = async (platform: string, url: string) => {
     try {
@@ -56,16 +57,15 @@ export const BookingScreen: React.FC<BookingScreenProps> = ({ route }) => {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Book Accommodation</Text>
-        <Text style={styles.subtitle}>
-          {location}
-        </Text>
+        <Text style={styles.subtitle}>{location}</Text>
         <Text style={styles.dates}>
           {checkIn} {checkOut && `- ${checkOut}`}
         </Text>
       </View>
 
       <Text style={styles.description}>
-        Sam couldn't find availability directly. Check these platforms for the best options:
+        Sam couldn't find availability directly. Check these platforms for the
+        best options:
       </Text>
 
       <View style={styles.platformsContainer}>
@@ -73,13 +73,17 @@ export const BookingScreen: React.FC<BookingScreenProps> = ({ route }) => {
           <TouchableOpacity
             key={platform}
             style={styles.platformCard}
-            onPress={() => openBookingLink(platform, url)}
-          >
-            <Image
-              source={PLATFORM_LOGOS[platform]}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            onPress={() => openBookingLink(platform, url)}>
+            <View
+              style={[
+                styles.logoBadge,
+                {backgroundColor: PLATFORM_STYLE[platform]?.color || '#007AFF'},
+              ]}>
+              <Text style={styles.logoBadgeText}>
+                {PLATFORM_STYLE[platform]?.label ||
+                  platform.charAt(0).toUpperCase()}
+              </Text>
+            </View>
             <Text style={styles.platformName}>
               {platform.charAt(0).toUpperCase() + platform.slice(1)}
             </Text>
@@ -91,7 +95,8 @@ export const BookingScreen: React.FC<BookingScreenProps> = ({ route }) => {
       <View style={styles.tip}>
         <Text style={styles.tipTitle}>Pro Tip</Text>
         <Text style={styles.tipText}>
-          Compare prices across platforms. Sometimes the same hotel has different rates on different booking sites!
+          Compare prices across platforms. Sometimes the same hotel has
+          different rates on different booking sites!
         </Text>
       </View>
     </ScrollView>
@@ -102,36 +107,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    padding: 20
+    padding: 20,
   },
   header: {
-    marginBottom: 20
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
     color: '#666',
-    marginBottom: 4
+    marginBottom: 4,
   },
   dates: {
     fontSize: 14,
-    color: '#999'
+    color: '#999',
   },
   description: {
     fontSize: 16,
     color: '#666',
     marginBottom: 24,
-    lineHeight: 22
+    lineHeight: 22,
   },
   platformsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
   },
   platformCard: {
     width: '48%',
@@ -141,22 +146,30 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#eee'
+    borderColor: '#eee',
   },
-  logo: {
-    width: 80,
-    height: 40,
-    marginBottom: 12
+  logoBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  logoBadgeText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
   },
   platformName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4
+    marginBottom: 4,
   },
   searchText: {
     fontSize: 12,
-    color: '#007AFF'
+    color: '#007AFF',
   },
   tip: {
     backgroundColor: '#FFF9E6',
@@ -164,17 +177,17 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 20,
     borderWidth: 1,
-    borderColor: '#FFE066'
+    borderColor: '#FFE066',
   },
   tipTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8
+    marginBottom: 8,
   },
   tipText: {
     fontSize: 14,
     color: '#666',
-    lineHeight: 20
-  }
+    lineHeight: 20,
+  },
 });

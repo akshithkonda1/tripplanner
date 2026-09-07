@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
+import React, {useState, useEffect} from 'react';
+import {View, StyleSheet, Text} from 'react-native';
+import MapView, {Marker, Polyline, PROVIDER_DEFAULT} from 'react-native-maps';
 
 interface Stop {
   id: string;
@@ -14,15 +14,15 @@ interface Stop {
 
 interface MapScreenProps {
   route: {
-    params: {
-      tripId: string;
+    params?: {
+      tripId?: string;
       itinerary?: any;
     };
   };
 }
 
-export const MapScreen: React.FC<MapScreenProps> = ({ route }) => {
-  const { itinerary } = route.params;
+export const MapScreen: React.FC<MapScreenProps> = ({route}) => {
+  const {itinerary} = route.params || {};
   const [stops, setStops] = useState<Stop[]>([]);
   const [routeCoordinates, setRouteCoordinates] = useState<any[]>([]);
 
@@ -38,9 +38,9 @@ export const MapScreen: React.FC<MapScreenProps> = ({ route }) => {
               name: item.name,
               coordinates: {
                 lat: item.location.lat,
-                lng: item.location.lng
+                lng: item.location.lng,
               },
-              type: item.type
+              type: item.type,
             });
           }
         });
@@ -51,7 +51,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ route }) => {
       // Create route polyline
       const coords = extractedStops.map(stop => ({
         latitude: stop.coordinates.lat,
-        longitude: stop.coordinates.lng
+        longitude: stop.coordinates.lng,
       }));
       setRouteCoordinates(coords);
     }
@@ -59,18 +59,25 @@ export const MapScreen: React.FC<MapScreenProps> = ({ route }) => {
 
   const getMarkerColor = (type: string) => {
     switch (type) {
-      case 'accommodation': return '#FF6B6B';
-      case 'meal': return '#4ECDC4';
-      case 'activity': return '#95E1D3';
-      case 'drive': return '#38A3A5';
-      default: return '#007AFF';
+      case 'accommodation':
+        return '#FF6B6B';
+      case 'meal':
+        return '#4ECDC4';
+      case 'activity':
+        return '#95E1D3';
+      case 'drive':
+        return '#38A3A5';
+      default:
+        return '#007AFF';
     }
   };
 
   if (stops.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text>No route data available. Start planning your trip in the chat!</Text>
+        <Text>
+          No route data available. Start planning your trip in the chat!
+        </Text>
       </View>
     );
   }
@@ -79,7 +86,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ route }) => {
     latitude: stops[0].coordinates.lat,
     longitude: stops[0].coordinates.lng,
     latitudeDelta: 5,
-    longitudeDelta: 5
+    longitudeDelta: 5,
   };
 
   return (
@@ -89,8 +96,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ route }) => {
         style={styles.map}
         initialRegion={initialRegion}
         showsUserLocation
-        showsMyLocationButton
-      >
+        showsMyLocationButton>
         {/* Route polyline */}
         {routeCoordinates.length > 1 && (
           <Polyline
@@ -106,19 +112,17 @@ export const MapScreen: React.FC<MapScreenProps> = ({ route }) => {
             key={stop.id}
             coordinate={{
               latitude: stop.coordinates.lat,
-              longitude: stop.coordinates.lng
+              longitude: stop.coordinates.lng,
             }}
             title={stop.name}
             description={stop.type}
-            pinColor={getMarkerColor(stop.type)}
-          >
+            pinColor={getMarkerColor(stop.type)}>
             <View style={styles.markerContainer}>
               <View
                 style={[
                   styles.marker,
-                  { backgroundColor: getMarkerColor(stop.type) }
-                ]}
-              >
+                  {backgroundColor: getMarkerColor(stop.type)},
+                ]}>
                 <Text style={styles.markerText}>{index + 1}</Text>
               </View>
             </View>
@@ -131,19 +135,19 @@ export const MapScreen: React.FC<MapScreenProps> = ({ route }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1
+    flex: 1,
   },
   map: {
-    flex: 1
+    flex: 1,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20
+    padding: 20,
   },
   markerContainer: {
-    alignItems: 'center'
+    alignItems: 'center',
   },
   marker: {
     width: 30,
@@ -152,11 +156,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#fff'
+    borderColor: '#fff',
   },
   markerText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 12
-  }
+    fontSize: 12,
+  },
 });

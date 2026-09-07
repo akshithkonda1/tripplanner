@@ -42,7 +42,10 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       return { statusCode: 200, body: 'Disconnected' };
     }
 
-    if (routeKey === 'sendMessage') {
+    // Only $connect, $disconnect, and $default routes are configured on the
+    // WebSocket API (see infrastructure/lib/backend-stack.ts), so every
+    // client message lands here as '$default' regardless of its action field.
+    if (routeKey === 'sendMessage' || routeKey === '$default') {
       const body: ChatMessage = JSON.parse(event.body || '{}');
       const { tripId, userId, message } = body;
 

@@ -1,12 +1,12 @@
 import axios from 'axios';
-import { API_CONFIG, ENDPOINTS } from '../config/api';
+import {API_CONFIG, ENDPOINTS} from '../config/api';
 
 const httpClient = axios.create({
   baseURL: API_CONFIG.HTTP_API_URL,
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 });
 
 export interface TripRequest {
@@ -66,5 +66,5 @@ export const api = {
   getUserTrips: async (): Promise<Trip[]> => {
     const response = await httpClient.get(ENDPOINTS.TRIPS);
     return response.data.trips;
-  }
+  },
 };

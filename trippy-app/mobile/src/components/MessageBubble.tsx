@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import {View, Text, StyleSheet, Image, TouchableOpacity} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 interface MessageBubbleProps {
@@ -26,10 +26,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isCurrentUser,
   showAvatar,
   onItineraryPress,
-  onPollVote
+  onPollVote,
 }) => {
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
   };
 
   const renderContent = () => {
@@ -38,8 +38,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         return (
           <TouchableOpacity
             style={styles.itineraryCard}
-            onPress={onItineraryPress}
-          >
+            onPress={onItineraryPress}>
             <Icon name="map-outline" size={24} color="#007AFF" />
             <View style={styles.itineraryContent}>
               <Text style={styles.itineraryTitle}>Itinerary Updated</Text>
@@ -58,10 +57,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 key={option.id}
                 style={[
                   styles.pollOption,
-                  option.voted && styles.pollOptionVoted
+                  option.voted && styles.pollOptionVoted,
                 ]}
-                onPress={() => onPollVote?.(option.id)}
-              >
+                onPress={() => onPollVote?.(option.id)}>
                 <Text style={styles.pollOptionText}>{option.text}</Text>
                 <Text style={styles.pollVoteCount}>{option.votes} votes</Text>
               </TouchableOpacity>
@@ -91,16 +89,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     <View
       style={[
         styles.container,
-        isCurrentUser ? styles.containerRight : styles.containerLeft
-      ]}
-    >
+        isCurrentUser ? styles.containerRight : styles.containerLeft,
+      ]}>
       {!isCurrentUser && showAvatar && (
         <View style={styles.avatarContainer}>
           {message.user.avatar ? (
-            <Image
-              source={{ uri: message.user.avatar }}
-              style={styles.avatar}
-            />
+            <Image source={{uri: message.user.avatar}} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
               <Text style={styles.avatarInitial}>
@@ -122,18 +116,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           style={[
             styles.bubble,
             isCurrentUser ? styles.bubbleRight : styles.bubbleLeft,
-            message.type && message.type !== 'text' && styles.bubbleSpecial
-          ]}
-        >
+            message.type && message.type !== 'text' && styles.bubbleSpecial,
+          ]}>
           {renderContent()}
         </View>
 
         <Text
           style={[
             styles.timestamp,
-            isCurrentUser ? styles.timestampRight : styles.timestampLeft
-          ]}
-        >
+            isCurrentUser ? styles.timestampRight : styles.timestampLeft,
+          ]}>
           {formatTime(message.timestamp)}
         </Text>
       </View>
@@ -145,104 +137,104 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     marginVertical: 4,
-    paddingHorizontal: 12
+    paddingHorizontal: 12,
   },
   containerLeft: {
-    justifyContent: 'flex-start'
+    justifyContent: 'flex-start',
   },
   containerRight: {
-    justifyContent: 'flex-end'
+    justifyContent: 'flex-end',
   },
   avatarContainer: {
-    marginRight: 8
+    marginRight: 8,
   },
   avatar: {
     width: 32,
     height: 32,
-    borderRadius: 16
+    borderRadius: 16,
   },
   avatarPlaceholder: {
     backgroundColor: '#007AFF',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   avatarInitial: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600'
+    fontWeight: '600',
   },
   avatarSpacer: {
-    width: 40
+    width: 40,
   },
   contentContainer: {
-    maxWidth: '75%'
+    maxWidth: '75%',
   },
   userName: {
     fontSize: 12,
     color: '#666',
     marginBottom: 4,
-    marginLeft: 12
+    marginLeft: 12,
   },
   bubble: {
     borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 10
+    paddingVertical: 10,
   },
   bubbleLeft: {
     backgroundColor: '#f0f0f0',
-    borderBottomLeftRadius: 4
+    borderBottomLeftRadius: 4,
   },
   bubbleRight: {
     backgroundColor: '#007AFF',
-    borderBottomRightRadius: 4
+    borderBottomRightRadius: 4,
   },
   bubbleSpecial: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#eee'
+    borderColor: '#eee',
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 20
+    lineHeight: 20,
   },
   timestamp: {
     fontSize: 10,
     color: '#999',
-    marginTop: 4
+    marginTop: 4,
   },
   timestampLeft: {
-    marginLeft: 12
+    marginLeft: 12,
   },
   timestampRight: {
     textAlign: 'right',
-    marginRight: 12
+    marginRight: 12,
   },
   itineraryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8
+    padding: 8,
   },
   itineraryContent: {
     flex: 1,
-    marginLeft: 12
+    marginLeft: 12,
   },
   itineraryTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333'
+    color: '#333',
   },
   itinerarySubtitle: {
     fontSize: 12,
-    color: '#666'
+    color: '#666',
   },
   pollCard: {
-    padding: 8
+    padding: 8,
   },
   pollQuestion: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 12
+    marginBottom: 12,
   },
   pollOption: {
     flexDirection: 'row',
@@ -251,36 +243,36 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#f8f8f8',
     borderRadius: 8,
-    marginBottom: 8
+    marginBottom: 8,
   },
   pollOptionVoted: {
     backgroundColor: '#E3F2FD',
     borderColor: '#007AFF',
-    borderWidth: 1
+    borderWidth: 1,
   },
   pollOptionText: {
     fontSize: 14,
-    color: '#333'
+    color: '#333',
   },
   pollVoteCount: {
     fontSize: 12,
-    color: '#666'
+    color: '#666',
   },
   locationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8
+    padding: 8,
   },
   locationContent: {
-    marginLeft: 12
+    marginLeft: 12,
   },
   locationName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333'
+    color: '#333',
   },
   locationAddress: {
     fontSize: 12,
-    color: '#666'
-  }
+    color: '#666',
+  },
 });
