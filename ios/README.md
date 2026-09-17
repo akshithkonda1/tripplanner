@@ -16,7 +16,7 @@ iOS 17+ / Xcode 16.
 - Road / Flight / Hybrid trips
 - Itinerary you can edit
 - MapKit (no Google, no fare overlays)
-- Flights via Booking.com (cheapest first) plus a travel-hack list (nearby airports, midweek, ±3 days, one-ways); log the ticket you buy. Stays via Booking.com (cheapest first), Hostelworld, and free-camp links
+- Flights and stays as in-trip cards: Booking.com still takes payment; Trippy ranks value per person and travel hacks. Guest mode uses a Booking.com-shaped catalog on the phone.
 - Budget ledger
 - Fuel estimate = MapKit/haversine miles × your MPG × a price you type
 - Packing + passport checklist (you check the official government site)

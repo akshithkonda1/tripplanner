@@ -8,7 +8,7 @@ enum LocalPlanner {
         case .flight:
             return """
             For \(trip.name) I’ll keep this as city stays, not driving days.
-            You typed “\(text)”. Open the Flights tab — Booking.com cheapest-first, then the other sites. We don’t buy or scrape fares.
+            You typed “\(text)”. Open the Flights tab — listings stay in Trippy, ranked by value per person. Payment is still Booking.com.
             I’d linger longer in \(trip.origin.name) and \(trip.destination.name) unless you want a whirlwind.
             """
         case .hybrid:

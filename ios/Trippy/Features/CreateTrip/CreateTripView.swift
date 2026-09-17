@@ -43,7 +43,7 @@ struct CreateTripView: View {
                         .font(.footnote)
                         .foregroundStyle(TrippyTheme.muted)
                     if mode != .road {
-                        Text("Flights open Booking.com cheapest-first, then the other search sites. Airports below are a bundled list on the phone.")
+                        Text("Flights stay on the trip: Booking.com inventory, Trippy value rank, pay on Booking.com. Airports below are a bundled list on the phone.")
                             .font(.footnote)
                             .foregroundStyle(TrippyTheme.muted)
                     }

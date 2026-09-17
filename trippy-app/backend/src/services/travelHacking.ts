@@ -1,3 +1,7 @@
+import { FlightListing, HackTag, HIDDEN_CITY_WARNING, StayListing } from './listings';
+
+export { HIDDEN_CITY_WARNING };
+
 export interface FlightHack {
   id: string;
   provider: string;
@@ -26,8 +30,17 @@ const AIRPORTS: Airport[] = [
   { iata: 'LGW', city: 'London', lat: 51.1537, lng: -0.1821 },
   { iata: 'STN', city: 'London', lat: 51.886, lng: 0.2389 },
   { iata: 'LIS', city: 'Lisbon', lat: 38.7742, lng: -9.1342 },
+  { iata: 'MAD', city: 'Madrid', lat: 40.4983, lng: -3.5676 },
+  { iata: 'CDG', city: 'Paris', lat: 49.0097, lng: 2.5479 },
+  { iata: 'AMS', city: 'Amsterdam', lat: 52.3105, lng: 4.7683 },
   { iata: 'HND', city: 'Tokyo', lat: 35.5494, lng: 139.7798 },
-  { iata: 'NRT', city: 'Tokyo', lat: 35.772, lng: 140.3929 }
+  { iata: 'NRT', city: 'Tokyo', lat: 35.772, lng: 140.3929 },
+  { iata: 'ICN', city: 'Seoul', lat: 37.4602, lng: 126.4407 },
+  { iata: 'DEN', city: 'Denver', lat: 39.8561, lng: -104.6737 },
+  { iata: 'SLC', city: 'Salt Lake City', lat: 40.7899, lng: -111.9791 },
+  { iata: 'LAX', city: 'Los Angeles', lat: 33.9416, lng: -118.4085 },
+  { iata: 'ORD', city: 'Chicago', lat: 41.9742, lng: -87.9073 },
+  { iata: 'BOS', city: 'Boston', lat: 42.3656, lng: -71.0096 }
 ];
 
 function haversineMiles(a: Airport, b: Airport): number {
@@ -71,7 +84,7 @@ export function nearbyAirports(airport: Airport, withinMiles = 90): Airport[] {
   );
 }
 
-function iso(date: Date): string {
+export function iso(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
@@ -79,27 +92,27 @@ function compact(isoDate: string): string {
   return isoDate.replace(/-/g, '').slice(-6);
 }
 
-function addDays(date: Date, days: number): Date {
+export function addDays(date: Date, days: number): Date {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
   return next;
 }
 
 /** weekday: 0 Sunday … 6 Saturday (Date#getUTCDay). */
-function shiftToWeekday(date: Date, weekday: number): Date {
+export function shiftToWeekday(date: Date, weekday: number): Date {
   const current = date.getUTCDay();
   const delta = (weekday - current + 7) % 7;
   return addDays(date, delta);
 }
 
-function bookingUrl(from: string, to: string, depart: Date, back?: Date): string {
+export function bookingUrl(from: string, to: string, depart: Date, back?: Date): string {
   const type = back ? 'ROUNDTRIP' : 'ONEWAY';
   let url = `https://flights.booking.com/flights/${from}.AIRPORT-${to}.AIRPORT/?type=${type}&adults=1&cabinClass=ECONOMY&sort=CHEAPEST&depart=${iso(depart)}`;
   if (back) url += `&return=${iso(back)}`;
   return url;
 }
 
-function bookingOpenJaw(
+export function bookingOpenJaw(
   outFrom: string,
   outTo: string,
   homeFrom: string,
@@ -164,8 +177,8 @@ function otherSites(from: string, to: string, depart: Date, back?: Date): Flight
 
 /**
  * Travel-hacking searches. Booking.com first, cheapest sort.
- * Nearby airports, flex dates, midweek, one-ways, open-jaw.
- * No hidden-city / skiplagging. No scraping — these are consumer deep links.
+ * Nearby airports, flex dates, midweek, one-ways, open-jaw, hidden-city.
+ * No scraping — consumer deep links and ranked listings only.
  */
 export function cheapFlightHacks(
   originQuery: string,
@@ -284,4 +297,87 @@ export function cheapFlightHacks(
 
   hacks.push(...otherSites(from, to, depart, back));
   return hacks;
+}
+
+const BEYOND: Record<string, string> = {
+  LIS: 'MAD',
+  MAD: 'BCN',
+  HND: 'ICN',
+  NRT: 'ICN',
+  LHR: 'CDG',
+  LGW: 'CDG',
+  STN: 'AMS',
+  JFK: 'BOS',
+  EWR: 'BOS',
+  LGA: 'BOS',
+  SFO: 'LAX',
+  OAK: 'LAX',
+  DEN: 'ORD',
+  SLC: 'DEN',
+  CDG: 'AMS',
+  AMS: 'CDG'
+};
+
+export function hiddenCityBeyond(destIata: string): string {
+  return BEYOND[destIata] || 'AMS';
+}
+
+function uniqueTags(tags: HackTag[]): HackTag[] {
+  return [...new Set(tags)];
+}
+
+function daysApart(a: string, b: string): number {
+  const ms = Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`);
+  return Math.round(ms / 86_400_000);
+}
+
+/** Tag a published fare with travel-hack labels. Does not book — rank only. */
+export function tagFlightListing(
+  listing: FlightListing,
+  requested: { from: string; to: string; depart: string; returnDate?: string }
+): FlightListing {
+  const tags = [...listing.hackTags];
+  const origin = resolveAirport(requested.from);
+  const dest = resolveAirport(requested.to);
+  const reqFrom = origin?.iata || requested.from.slice(0, 3).toUpperCase();
+  const reqTo = dest?.iata || requested.to.slice(0, 3).toUpperCase();
+
+  if (listing.from !== reqFrom || (listing.actualGetOff ? listing.actualGetOff !== reqTo : listing.to !== reqTo)) {
+    tags.push('nearby_airport');
+  }
+  if (Math.abs(daysApart(listing.departDate, requested.depart)) >= 1) {
+    tags.push('flex_dates');
+  }
+  const departDay = new Date(`${listing.departDate}T00:00:00Z`).getUTCDay();
+  if (departDay === 2 || departDay === 3) {
+    tags.push('midweek');
+  }
+  if (listing.isOneWay) {
+    tags.push('one_way_pair');
+  }
+  if (listing.returnDate && listing.from !== reqFrom && listing.to === reqTo) {
+    tags.push('open_jaw');
+  }
+  if (listing.actualGetOff || listing.hackTags.includes('hidden_city')) {
+    tags.push('hidden_city');
+  }
+
+  const hackTags = uniqueTags(tags);
+  const warning = hackTags.includes('hidden_city') ? listing.warning || HIDDEN_CITY_WARNING : listing.warning;
+  return { ...listing, hackTags, warning };
+}
+
+export function tagStayListing(listing: StayListing, partySize: number): StayListing {
+  const tags = [...listing.hackTags];
+  if (listing.propertyType === 'apartment' && partySize >= 3) tags.push('apartment');
+  if (listing.rooms >= 2 && partySize >= 3) tags.push('split_rooms');
+  if (listing.comboTotal != null) tags.push('package_combo');
+  return { ...listing, hackTags: uniqueTags(tags) };
+}
+
+export function nightsBetween(checkIn: string, checkOut: string): number {
+  const a = Date.parse(`${checkIn}T00:00:00Z`);
+  const b = Date.parse(`${checkOut}T00:00:00Z`);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return 1;
+  return Math.max(1, Math.round((b - a) / 86_400_000));
 }

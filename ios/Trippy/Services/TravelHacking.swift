@@ -18,7 +18,7 @@ struct FlightHunt: Identifiable {
 
 enum TravelHacking {
     /// Booking.com first (cheapest sort), then everyone else.
-    /// Legal consumer tricks only: nearby airports, flex dates, midweek, one-ways, open-jaw.
+    /// Nearby airports, flex dates, midweek, one-ways, open-jaw, hidden-city.
     static func searches(
         originQuery: String,
         destinationQuery: String,
@@ -379,5 +379,55 @@ enum TravelHacking {
 
     private static func url(_ string: String) -> URL {
         URL(string: string) ?? URL(string: "https://flights.booking.com")!
+    }
+
+    static func hiddenCityBeyond(_ destIata: String) -> String {
+        switch destIata {
+        case "LIS": return "MAD"
+        case "MAD": return "BCN"
+        case "HND", "NRT": return "ICN"
+        case "LHR", "LGW": return "CDG"
+        case "STN": return "AMS"
+        case "JFK", "EWR", "LGA": return "BOS"
+        case "SFO", "OAK": return "LAX"
+        case "DEN": return "ORD"
+        case "SLC": return "DEN"
+        default: return "AMS"
+        }
+    }
+
+    static func tagStay(_ listing: StayListing, partySize: Int) -> StayListing {
+        var next = listing
+        var tags = listing.hackTags
+        if listing.propertyType == "apartment", partySize >= 3 { tags.append(.apartment) }
+        if listing.rooms >= 2, partySize >= 3 { tags.append(.splitRooms) }
+        if listing.comboTotal != nil { tags.append(.packageCombo) }
+        next.hackTags = Array(Set(tags))
+        return next
+    }
+
+    static func tagFlight(
+        _ listing: FlightListing,
+        requested: (from: String, to: String, depart: String, returnDate: String?)
+    ) -> FlightListing {
+        var next = listing
+        var tags = listing.hackTags
+        if listing.from != requested.from || (listing.actualGetOff.map { $0 != requested.to } ?? (listing.to != requested.to)) {
+            tags.append(.nearbyAirport)
+        }
+        if listing.departDate != requested.depart {
+            tags.append(.flexDates)
+        }
+        if let date = DateFormatters.iso.date(from: listing.departDate) {
+            let weekday = Calendar(identifier: .gregorian).component(.weekday, from: date)
+            if weekday == 3 || weekday == 4 { tags.append(.midweek) }
+        }
+        if listing.isOneWay { tags.append(.oneWayPair) }
+        if listing.hackTags.contains(.hiddenCity) || listing.actualGetOff != nil {
+            tags.append(.hiddenCity)
+            if next.warning == nil { next.warning = hiddenCityWarning }
+        }
+        next.hackTags = Array(Set(tags))
+        return next
     }
 }

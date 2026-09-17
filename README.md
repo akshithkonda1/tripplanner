@@ -22,12 +22,12 @@ Sam (the AI co-pilot), group chat, itinerary, budget, and maps are shared across
 | **AI** | Amazon Bedrock (Claude) — Sam plans on AWS compute, not a travel-vendor API |
 | **Auth** | **Amazon Cognito** (email/password; Sign in with Apple can federate later) |
 | **Maps / device** | MapKit · SwiftData |
-| **Stays** | **Booking.com** (most inventory / usage, sorted by price) plus Hostelworld, Airbnb, free-camp directories |
-| **Flights** | **Booking.com** flights first (`sort=CHEAPEST`), then Kayak, Google Flights, Skyscanner, Momondo |
+| **Stays** | In-trip Booking.com cards; Trippy value rank; pay on Booking.com |
+| **Flights** | In-trip Booking.com fare cards; value + travel hacks; pay on Booking.com |
 
 **iOS first.** We build and perfect the Swift app, then port the same product to Kotlin. Android under `android/` stays a scaffold until iOS is the source of truth.
 
-**As cheap as possible — free first, then the sites people actually use.** Stays open Booking.com (price order), Hostelworld, and Airbnb. Above those: free or nearly free (public land, free campsites, Couchsurfing). Flights open **Booking.com cheapest-first**, then Kayak / Google Flights / Skyscanner / Momondo. A travel-hacking pass tries nearby airports (~90 miles), ±3 days, Tuesday/Wednesday, one-ways, and open-jaw. We do not pay for a partner API, scrape sites, or suggest hidden-city / skiplagging — we deep-link the consumer sites so you get their live inventory and their cheapest sort. You still log the confirmation on the trip after you book.
+**As cheap as possible — value per person, then total cost.** Stays and flights show **in-trip result cards** from Booking.com. Payment stays on Booking.com. Trippy reads price, stars, guest score, nights, and party size, then adds its own **Trippy value** rank (a $1,000 / 3-night 5-star for four people beats a 3-star at the same price). Travel hacks (nearby airports, ±3 days, midweek, one-ways, open-jaw, hidden-city, packages) are extra tags with warnings — they do not book. Guest mode grades a Booking.com-shaped catalog on device until Demand API credentials are set.
 
 ---
 
@@ -56,7 +56,7 @@ Upcoming, active, and past trips. Each card shows a **Road / Flight / Hybrid** b
 Travel mode is the first decision.
 
 - **Road** — city / address search
-- **Flight** — airport search (IATA + city), Booking.com cheapest-first + travel hacks (nearby airports, ±3 days, midweek, one-ways, open-jaw)
+- **Flight** — airport search (IATA + city), in-trip Booking.com cards ranked by Trippy value, travel hacks including nearby airports / flex / hidden-city
 - **Hybrid** — mix legs (fly, drive, train, bus, ferry)
 
 Then: dates, who you're traveling with (solo / couple / family / friends), optional budget, invite link.
@@ -76,15 +76,15 @@ Realtime messages, typing indicators, @Sam in the thread, add/remove people.
 ### 8. Budget
 Flights, fuel, food, lodging, activities, transit. Split with the group. Multi-currency on Flight Mode.
 
-### 9. Cheap stays (Booking.com and friends)
-A **Stays** tab ranked **free → hostel → cheapest hotel**:
+### 9. Cheap stays (in Trippy, pay on Booking.com)
 
-1. Free / nearly free (free campsites, Recreation.gov, Couchsurfing)
-2. Hostelworld
-3. Booking.com hostels, then **Booking.com everything sorted by price** (most usage, most beds)
-4. Airbnb, Hotels.com as extras
+A **Stays** tab with native cards, not Safari search links:
 
-Tap opens the live site with your city and dates. After you book, save the confirmation on the trip.
+1. **Best value** — Trippy value per person (stars + guest rating vs nightly / party size)
+2. **Lowest total**
+3. **Travel hacks** — apartment vs two rooms, flight+hotel package
+
+Tap **Book on Booking.com** for that listing. After you book, save the confirmation on the trip.
 
 ### 10. Fuel (Road / Hybrid drive legs)
 Local estimate: MapKit distance × your MPG × a price you type. No station-price API.
@@ -103,14 +103,11 @@ Cached itinerary and maps. Queued chat and expenses. Flight Mode also caches con
 Flight Mode is how Trippy plans trips that aren’t road trips: multi-city, international, slow travel.
 
 - Cities and **legs**, not a driving corridor. Open-jaw and one-way are normal.
-- **Cheap flights tab** — same live-results idea as Stays:
-  1. **Booking.com** flights, `sort=CHEAPEST` (opened first, most usage)
-  2. Travel-hack rows: nearby airports within ~90 miles, ±3 days, Tuesday/Wednesday, two one-ways, open-jaw (fly into one airport, home from another)
-  3. Then Kayak, Google Flights (price grid), Skyscanner, Momondo
-- After you land: city days, cheap lodging, transit ranked by cost.
-- Timezone-aware timeline, visa/ETA checklist, packing list.
-- Sam defaults to fewer hops and longer stays unless you ask for a whirlwind.
-- We never scrape fares or recommend hidden-city / skiplagging. You tap a row, see live results, then log the ticket you bought.
+- **Cheap flights tab** — listings stay on the trip:
+  1. **Best value** — Trippy ranks Booking.com fares per person
+  2. **Lowest total**
+  3. **Travel hacks** — nearby airports, ±3 days, midweek, one-way pairs, open-jaw, hidden-city (hard warning: bags / voided return / contract of carriage)
+- Book on Booking.com. Log the ticket you bought.
 
 Hybrid example: fly SFO → Denver, road-trip the Rockies for 8 days, fly home from Salt Lake City. The Flights tab hunts each air hop as a cheap one-way plus the open-jaw combo.
 
@@ -125,8 +122,8 @@ Tabs
 │   └── Trip
 │       ├── Itinerary
 │       ├── Map
-│       ├── Flights   (Booking.com cheapest-first + travel hacks)
-│       ├── Stays     (Booking.com cheapest-first, then free options)
+│       ├── Flights   (in-trip cards, Trippy value + travel hacks)
+│       ├── Stays     (in-trip cards, Trippy value)
 │       ├── Budget
 │       └── Chat
 ├── Explore       roadside stops, or cheap destinations in Flight Mode
@@ -164,7 +161,8 @@ Foundation: Lambda + DynamoDB + HTTP API + WebSocket API. `travelMode` defaults 
 | `GET /trips` | List the signed-in user's trips (`getUserTrips`) |
 | `GET /trips/{id}` | Trip detail |
 | `POST /trips/{id}/plan` | Sam generates an itinerary (prompt branches on mode) |
-| `GET /flights/search` | Not a paid fare API — travel-hack deep links (Booking.com first) |
+| `GET /trips/{id}/stays/search` | Ranked stay cards (Booking.com inventory → Trippy value) |
+| `GET /trips/{id}/flights/search` | Ranked fare cards (Booking.com checkout, travel hacks tagged) |
 | WebSocket | Group chat + Sam streaming |
 
 Sam on Bedrock: Road Mode keeps scenic-route + gas planning. Flight Mode uses cities, fares, stays, and transit. Hybrid mixes both per leg.
