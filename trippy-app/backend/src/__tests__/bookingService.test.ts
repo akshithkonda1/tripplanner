@@ -1,5 +1,6 @@
 import {
   generateBookingLinks,
+  cheapStayLinks,
   searchAccommodations,
   getRestaurantRecommendations
 } from '../services/bookingService';
@@ -47,6 +48,23 @@ describe('Booking Service', () => {
       );
 
       expect(result['Booking.com']).toContain('2024-07-02');
+    });
+
+    it('should sort Booking.com by price', async () => {
+      const result = await generateBookingLinks('Lisbon', '2026-11-02', '2026-11-06');
+      expect(result['Booking.com']).toContain('order=price');
+    });
+  });
+
+  describe('cheapStayLinks', () => {
+    it('puts free options before Booking.com', () => {
+      const links = cheapStayLinks('Lisbon', '2026-11-02', '2026-11-06');
+      expect(links[0].tier).toBe('free');
+      const booking = links.find(l => l.id === 'booking-cheap');
+      expect(booking?.url).toContain('order=price');
+      expect(booking?.url).toContain('Lisbon');
+      expect(links.findIndex(l => l.tier === 'free'))
+        .toBeLessThan(links.findIndex(l => l.id === 'booking-cheap'));
     });
   });
 

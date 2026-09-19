@@ -21,11 +21,13 @@ Sam (the AI co-pilot), group chat, itinerary, budget, and maps are shared across
 | **Cloud** | AWS Lambda · API Gateway · DynamoDB · Cognito · Bedrock |
 | **AI** | Amazon Bedrock (Claude) — Sam plans on AWS compute, not a travel-vendor API |
 | **Auth** | **Amazon Cognito** (email/password; Sign in with Apple can federate later) |
-| **Maps / device** | MapKit · SwiftData — no Skyscanner, Amadeus, GasBuddy, or weather APIs |
+| **Maps / device** | MapKit · SwiftData |
+| **Stays** | In-trip Booking.com cards; Trippy value rank; pay on Booking.com |
+| **Flights** | In-trip Booking.com fare cards; value + travel hacks; pay on Booking.com |
 
 **iOS first.** We build and perfect the Swift app, then port the same product to Kotlin. Android under `android/` stays a scaffold until iOS is the source of truth.
 
-**No third-party travel APIs.** Flight Mode, fuel, lodging notes, and Explore are on-device (what you type, MapKit, a bundled airport list) plus AWS for identity, storage, and Sam. You log a flight or a hostel yourself; we do not scrape or buy fares.
+**As cheap as possible — value per person, then total cost.** Stays and flights show **in-trip result cards** from Booking.com. Payment stays on Booking.com. Trippy reads price, stars, guest score, nights, and party size, then adds its own **Trippy value** rank (a $1,000 / 3-night 5-star for four people beats a 3-star at the same price). Travel hacks (nearby airports, ±3 days, midweek, one-ways, open-jaw, hidden-city, packages) are extra tags with warnings — they do not book. Guest mode grades a Booking.com-shaped catalog on device until Demand API credentials are set.
 
 ---
 
@@ -54,7 +56,7 @@ Upcoming, active, and past trips. Each card shows a **Road / Flight / Hybrid** b
 Travel mode is the first decision.
 
 - **Road** — city / address search
-- **Flight** — airport search (IATA + city), nearest cheap airport, multi-city legs, flexible dates (±3 days)
+- **Flight** — airport search (IATA + city), in-trip Booking.com cards ranked by Trippy value, travel hacks including nearby airports / flex / hidden-city
 - **Hybrid** — mix legs (fly, drive, train, bus, ferry)
 
 Then: dates, who you're traveling with (solo / couple / family / friends), optional budget, invite link.
@@ -74,8 +76,15 @@ Realtime messages, typing indicators, @Sam in the thread, add/remove people.
 ### 8. Budget
 Flights, fuel, food, lodging, activities, transit. Split with the group. Multi-currency on Flight Mode.
 
-### 9. Stays you log
-No hotel/flight booking APIs. Save a hostel name, confirmation, and cost onto the itinerary yourself.
+### 9. Cheap stays (in Trippy, pay on Booking.com)
+
+A **Stays** tab with native cards, not Safari search links:
+
+1. **Best value** — Trippy value per person (stars + guest rating vs nightly / party size)
+2. **Lowest total**
+3. **Travel hacks** — apartment vs two rooms, flight+hotel package
+
+Tap **Book on Booking.com** for that listing. After you book, save the confirmation on the trip.
 
 ### 10. Fuel (Road / Hybrid drive legs)
 Local estimate: MapKit distance × your MPG × a price you type. No station-price API.
@@ -94,12 +103,13 @@ Cached itinerary and maps. Queued chat and expenses. Flight Mode also caches con
 Flight Mode is how Trippy plans trips that aren’t road trips: multi-city, international, slow travel.
 
 - Cities and **legs**, not a driving corridor. Open-jaw and one-way are normal.
-- Cheapest-total fare search, flexible dates, nearby cheaper airports, honest budget-airline tradeoffs.
-- After you land: city days, cheap lodging, transit ranked by cost, layover helper.
-- Timezone-aware timeline, visa/ETA checklist, packing list, currency converter.
-- Sam defaults to fewer hops and longer stays unless you ask for a whirlwind.
+- **Cheap flights tab** — listings stay on the trip:
+  1. **Best value** — Trippy ranks Booking.com fares per person
+  2. **Lowest total**
+  3. **Travel hacks** — nearby airports, ±3 days, midweek, one-way pairs, open-jaw, hidden-city (hard warning: bags / voided return / contract of carriage)
+- Book on Booking.com. Log the ticket you bought.
 
-Hybrid example: fly SFO → Denver, road-trip the Rockies for 8 days, fly home from Salt Lake City.
+Hybrid example: fly SFO → Denver, road-trip the Rockies for 8 days, fly home from Salt Lake City. The Flights tab hunts each air hop as a cheap one-way plus the open-jaw combo.
 
 ---
 
@@ -112,7 +122,8 @@ Tabs
 │   └── Trip
 │       ├── Itinerary
 │       ├── Map
-│       ├── Flights   (Flight / Hybrid)
+│       ├── Flights   (in-trip cards, Trippy value + travel hacks)
+│       ├── Stays     (in-trip cards, Trippy value)
 │       ├── Budget
 │       └── Chat
 ├── Explore       roadside stops, or cheap destinations in Flight Mode
@@ -150,9 +161,8 @@ Foundation: Lambda + DynamoDB + HTTP API + WebSocket API. `travelMode` defaults 
 | `GET /trips` | List the signed-in user's trips (`getUserTrips`) |
 | `GET /trips/{id}` | Trip detail |
 | `POST /trips/{id}/plan` | Sam generates an itinerary (prompt branches on mode) |
-| `GET /flights/search` | Cheapest-first fare search |
-| `POST /trips/{id}/flights` | Attach a fare to a leg |
-| `GET /flights/status/{flightNumber}` | Live status |
+| `GET /trips/{id}/stays/search` | Ranked stay cards (Booking.com inventory → Trippy value) |
+| `GET /trips/{id}/flights/search` | Ranked fare cards (Booking.com checkout, travel hacks tagged) |
 | WebSocket | Group chat + Sam streaming |
 
 Sam on Bedrock: Road Mode keeps scenic-route + gas planning. Flight Mode uses cities, fares, stays, and transit. Hybrid mixes both per leg.
@@ -194,7 +204,7 @@ Needs AWS credentials and Bedrock model access in the target region. See `trippy
 
 ## Roadmap
 
-1. **iOS majority (now)** — Cognito, SwiftData, MapKit, itinerary, Flight Mode without vendor APIs, budget, fuel math, packing, on-device Sam
+1. **iOS majority (now)** — Cognito, SwiftData, MapKit, itinerary, cheap flights (Booking.com first + travel hacks), cheap stays, budget, fuel math, packing, on-device Sam
 2. **Cognito + AWS deploy** — plug real pool IDs into the Xcode scheme, sync trips when signed in
 3. **Sam on Bedrock** — signed-in planning through Lambda
 4. **Group chat** — WebSocket, still AWS, still no travel vendors

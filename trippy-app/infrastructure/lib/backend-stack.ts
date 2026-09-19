@@ -75,6 +75,7 @@ export class TrippyBackendStack extends cdk.Stack {
       GROK_MODEL: process.env.GROK_MODEL || '',
       GROK_PLANNING_MODEL: process.env.GROK_PLANNING_MODEL || '',
       GROK_API_URL: process.env.GROK_API_URL || '',
+      BOOKING_DEMAND_TOKEN: process.env.BOOKING_DEMAND_TOKEN || '',
     };
 
     // Bedrock IAM Policy
@@ -154,6 +155,24 @@ export class TrippyBackendStack extends cdk.Stack {
       bundling: bundlingConfig
     });
 
+    const searchStays = new nodejs.NodejsFunction(this, 'SearchStays', {
+      entry: path.join(__dirname, '../../backend/src/lambdas/searchInventory.ts'),
+      handler: 'searchStaysHandler',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      timeout: cdk.Duration.seconds(20),
+      environment: lambdaEnvironment,
+      bundling: bundlingConfig
+    });
+
+    const searchFlights = new nodejs.NodejsFunction(this, 'SearchFlights', {
+      entry: path.join(__dirname, '../../backend/src/lambdas/searchInventory.ts'),
+      handler: 'searchFlightsHandler',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      timeout: cdk.Duration.seconds(20),
+      environment: lambdaEnvironment,
+      bundling: bundlingConfig
+    });
+
     // Connection Handlers
     const connectHandler = new nodejs.NodejsFunction(this, 'ConnectHandler', {
       entry: path.join(__dirname, '../../backend/src/lambdas/connectionHandler.ts'),
@@ -178,6 +197,8 @@ export class TrippyBackendStack extends cdk.Stack {
       table.grantReadWriteData(createTrip);
       table.grantReadWriteData(getTrip);
       table.grantReadWriteData(listTrips);
+      table.grantReadWriteData(searchStays);
+      table.grantReadWriteData(searchFlights);
       table.grantReadWriteData(connectHandler);
       table.grantReadWriteData(disconnectHandler);
     });
@@ -271,6 +292,26 @@ export class TrippyBackendStack extends cdk.Stack {
       integration: new apigatewayIntegrations.HttpLambdaIntegration(
         'PlanTripIntegration',
         tripPlanner
+      ),
+      ...authorized
+    });
+
+    httpApi.addRoutes({
+      path: '/trips/{tripId}/stays/search',
+      methods: [apigateway.HttpMethod.GET],
+      integration: new apigatewayIntegrations.HttpLambdaIntegration(
+        'SearchStaysIntegration',
+        searchStays
+      ),
+      ...authorized
+    });
+
+    httpApi.addRoutes({
+      path: '/trips/{tripId}/flights/search',
+      methods: [apigateway.HttpMethod.GET],
+      integration: new apigatewayIntegrations.HttpLambdaIntegration(
+        'SearchFlightsIntegration',
+        searchFlights
       ),
       ...authorized
     });

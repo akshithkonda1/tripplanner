@@ -23,6 +23,8 @@ struct TripDetailView: View {
                 FlightsView(tripId: tripId)
                     .tabItem { Label("Flights", systemImage: "airplane") }
             }
+            CheapStaysView(tripId: tripId)
+                .tabItem { Label("Stays", systemImage: "bed.double") }
             BudgetView(tripId: tripId)
                 .tabItem { Label("Budget", systemImage: "dollarsign.circle") }
             if workspace.trip.travelMode != .flight {

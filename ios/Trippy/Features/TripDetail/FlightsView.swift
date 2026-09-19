@@ -1,8 +1,16 @@
 import SwiftUI
 
+/// In-trip flight results. Booking.com still takes payment; Trippy ranks value and travel hacks.
 struct FlightsView: View {
     let tripId: String
     @EnvironmentObject private var store: TripStore
+    @EnvironmentObject private var session: AuthSession
+    @State private var originOverride = ""
+    @State private var destOverride = ""
+    @State private var partySize = 1
+    @State private var showingHackExplain = false
+    @State private var search: RankedFlightSearch?
+    @State private var loading = false
     @State private var airline = ""
     @State private var number = ""
     @State private var pnr = ""
@@ -15,27 +23,82 @@ struct FlightsView: View {
         if var workspace = store.workspace(id: tripId) {
             List {
                 Section {
-                    Text("Log the ticket you already bought. Trippy does not search or book flights.")
+                    Text("Results stay on this trip. Trippy reads each fare (price, stops, party size) and ranks value per person. Payment is still Booking.com.")
                         .font(.footnote)
                         .foregroundStyle(TrippyTheme.muted)
+                    TextField("From (city or IATA)", text: $originOverride)
+                        .textInputAutocapitalization(.characters)
+                    TextField("To (city or IATA)", text: $destOverride)
+                        .textInputAutocapitalization(.characters)
+                    Stepper("Travelers: \(partySize)", value: $partySize, in: 1...12)
+                    if workspace.trip.datesFlexible {
+                        Text("Flexible dates are on — check the ±3 day and midweek rows first.")
+                            .font(.caption)
+                            .foregroundStyle(TrippyTheme.muted)
+                    }
+                } header: {
+                    Label("Hunt the cheapest", systemImage: "airplane")
                 }
 
-                ForEach(workspace.flights) { flight in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(flight.airline) \(flight.flightNumber)")
-                            .font(.headline)
-                        Text("\(flight.fromCode) → \(flight.toCode)")
-                        if !flight.confirmationCode.isEmpty {
-                            Text("PNR \(flight.confirmationCode)").font(.caption)
-                        }
-                        if let cost = flight.cost {
-                            Text("$\(cost)").font(.caption.weight(.semibold))
+                if loading {
+                    Section { ProgressView("Ranking fares…") }
+                }
+
+                if let search {
+                    Section("Best value") {
+                        ForEach(search.bestValue) { flight in
+                            FlightResultCard(flight: flight)
                         }
                     }
+                    Section("Lowest total") {
+                        ForEach(search.lowestTotal) { flight in
+                            FlightResultCard(flight: flight)
+                        }
+                    }
+                    Section("Travel hacks") {
+                        ForEach(search.travelHacks) { flight in
+                            FlightResultCard(flight: flight)
+                        }
+                    }
+                } else if !loading {
+                    Section {
+                        Text("Add a start, destination, and dates we can turn into airport codes (SFO, Lisbon, Tokyo…).")
+                            .font(.footnote)
+                            .foregroundStyle(TrippyTheme.muted)
+                    }
                 }
-                .onDelete { index in
-                    workspace.flights.remove(atOffsets: index)
-                    store.update(workspace)
+
+                Button {
+                    showingHackExplain = true
+                } label: {
+                    Label("How the travel hack works", systemImage: "info.circle")
+                }
+
+                Section {
+                    if workspace.flights.isEmpty {
+                        Text("Log a ticket you already bought so the budget stays honest.")
+                            .font(.footnote)
+                            .foregroundStyle(TrippyTheme.muted)
+                    }
+                    ForEach(workspace.flights) { flight in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(flight.airline) \(flight.flightNumber)")
+                                .font(.headline)
+                            Text("\(flight.fromCode) → \(flight.toCode)")
+                            if !flight.confirmationCode.isEmpty {
+                                Text("PNR \(flight.confirmationCode)").font(.caption)
+                            }
+                            if let cost = flight.cost {
+                                Text("$\(cost)").font(.caption.weight(.semibold))
+                            }
+                        }
+                    }
+                    .onDelete { index in
+                        workspace.flights.remove(atOffsets: index)
+                        store.update(workspace)
+                    }
+                } header: {
+                    Label("Already booked", systemImage: "ticket")
                 }
 
                 Section("Add a flight you hold") {
@@ -86,27 +149,80 @@ struct FlightsView: View {
                     }
                     .disabled(airline.isEmpty || number.isEmpty || from.isEmpty || to.isEmpty)
                 }
-
-                Section("Stays you booked yourself") {
-                    ForEach(workspace.stayNotes) { stay in
-                        Text("\(stay.place) · \(stay.city) · \(stay.nights) nights")
-                    }
-                    Button("Add a hostel / stay note") {
-                        workspace.stayNotes.append(
-                            StayNote(
-                                id: UUID().uuidString,
-                                city: workspace.trip.destination.name,
-                                place: "Hostel / friend / camp",
-                                confirmation: "",
-                                nights: 2
-                            )
-                        )
-                        store.update(workspace)
-                    }
-                }
             }
             .scrollContentBackground(.hidden)
             .background(TrippyTheme.cream.ignoresSafeArea())
+            .sheet(isPresented: $showingHackExplain) {
+                NavigationStack {
+                    TravelHackExplainSheet()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { showingHackExplain = false }
+                            }
+                        }
+                }
+            }
+            .onAppear {
+                if partySize == 1 {
+                    partySize = max(1, workspace.trip.participants.count)
+                }
+                refresh(trip: workspace.trip, remote: true)
+            }
+            .onChange(of: originOverride) { _ in refresh(trip: workspace.trip, remote: false) }
+            .onChange(of: destOverride) { _ in refresh(trip: workspace.trip, remote: false) }
+            .onChange(of: partySize) { _ in refresh(trip: workspace.trip, remote: true) }
         }
+    }
+
+    private func refresh(trip: Trip, remote: Bool) {
+        let origin = originOverride.isEmpty ? trip.origin.name : originOverride
+        let dest = destOverride.isEmpty ? trip.destination.name : destOverride
+        let local = BookingCatalog.localFlightSearch(
+            from: origin,
+            to: dest,
+            depart: trip.startDate,
+            returnDate: trip.endDate,
+            adults: partySize
+        )
+        search = local.bestValue.isEmpty ? nil : local
+        guard remote, APIConfiguration.isConfigured, let token = session.idToken, search != nil else { return }
+        loading = true
+        Task {
+            do {
+                search = try await APIClient.shared.searchFlights(
+                    tripId: tripId,
+                    from: origin,
+                    to: dest,
+                    depart: trip.startDate,
+                    returnDate: trip.endDate,
+                    adults: partySize,
+                    idToken: token
+                )
+            } catch {
+                search = local.bestValue.isEmpty ? nil : local
+            }
+            loading = false
+        }
+    }
+}
+
+struct TravelHackExplainSheet: View {
+    var body: some View {
+        List {
+            Section("What Trippy ranks") {
+                Text("Nearby airports within ~90 miles (SFO ↔ OAK, JFK ↔ EWR).")
+                Text("Shift dates ±3 days, and always try a Tuesday or Wednesday.")
+                Text("One-ways both directions, in case two cheap singles beat a round-trip.")
+                Text("Open-jaw: fly into one airport, home from another in the same city.")
+                Text("Hidden-city / skiplag when a through fare via your city is cheaper — tagged with a hard warning.")
+                Text("Value per person: a $1,000 / 3-night 5-star for four people beats a 3-star at the same price.")
+            }
+            Section("What we never do") {
+                Text("Scraping Booking.com. Inventory is structured listings (Demand API or a Booking.com-shaped catalog). Payment stays on Booking.com.")
+                Text("Hiding the risk on a hidden-city fare. Bags, the rest of the ticket, and the airline contract of carriage are on you.")
+            }
+        }
+        .navigationTitle("Travel hacking")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

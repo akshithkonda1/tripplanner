@@ -21,11 +21,91 @@ export async function generateBookingLinks(
   const checkOut = checkOutDate ? formatDate(checkOutDate) : getNextDay(checkInDate);
 
   return {
-    'Booking.com': `https://www.booking.com/searchresults.html?ss=${encodedAddress}&checkin=${checkIn}&checkout=${checkOut}`,
+    'Booking.com': `https://www.booking.com/searchresults.html?ss=${encodedAddress}&checkin=${checkIn}&checkout=${checkOut}&order=price`,
     'Hotels.com': `https://www.hotels.com/search.do?destination=${encodedAddress}&startDate=${checkIn}&endDate=${checkOut}`,
     'Airbnb': `https://www.airbnb.com/s/${encodedAddress}/homes?checkin=${checkIn}&checkout=${checkOut}`,
     'Expedia': `https://www.expedia.com/Hotel-Search?destination=${encodedAddress}&startDate=${checkIn}&endDate=${checkOut}`
   };
+}
+
+export type CheapStayTier = 'free' | 'cheap' | 'most_usage';
+
+export interface CheapStayLink {
+  id: string;
+  title: string;
+  subtitle: string;
+  tier: CheapStayTier;
+  url: string;
+}
+
+/** Free first, then hostels, then Booking.com (most usage) sorted by price. */
+export function cheapStayLinks(
+  place: string,
+  checkInDate: string,
+  checkOutDate?: string
+): CheapStayLink[] {
+  const q = encodeURIComponent(place);
+  const checkIn = formatDate(checkInDate);
+  const checkOut = checkOutDate ? formatDate(checkOutDate) : getNextDay(checkInDate);
+
+  return [
+    {
+      id: 'freecamp',
+      title: 'Free / cheap campsites',
+      subtitle: 'As close to free as it gets — you still confirm on the ground',
+      tier: 'free',
+      url: `https://freecampsites.net/#q=${q}`
+    },
+    {
+      id: 'recreation',
+      title: 'Public land & campgrounds',
+      subtitle: 'Recreation.gov — often cheaper than a motel',
+      tier: 'free',
+      url: `https://www.recreation.gov/search?q=${q}`
+    },
+    {
+      id: 'couchsurfing',
+      title: 'Couchsurfing',
+      subtitle: 'Free stay with a host when it works out',
+      tier: 'free',
+      url: `https://www.couchsurfing.com/?q=${q}`
+    },
+    {
+      id: 'hostelworld',
+      title: 'Hostelworld',
+      subtitle: 'Dorm beds — usually the cheapest roof in town',
+      tier: 'cheap',
+      url: `https://www.hostelworld.com/search?search_keywords=${q}&date_from=${checkIn}&date_to=${checkOut}&number_of_guests=1`
+    },
+    {
+      id: 'booking-hostels',
+      title: 'Booking.com hostels',
+      subtitle: 'Same site everyone uses, hostel filter, price order',
+      tier: 'cheap',
+      url: `https://www.booking.com/searchresults.html?ss=${q}&checkin=${checkIn}&checkout=${checkOut}&order=price&nflt=ht_id%3D204`
+    },
+    {
+      id: 'booking-cheap',
+      title: 'Booking.com — cheapest first',
+      subtitle: 'Most usage, most beds. Sorted by price, not stars',
+      tier: 'most_usage',
+      url: `https://www.booking.com/searchresults.html?ss=${q}&checkin=${checkIn}&checkout=${checkOut}&group_adults=1&no_rooms=1&order=price`
+    },
+    {
+      id: 'airbnb',
+      title: 'Airbnb',
+      subtitle: 'Sometimes a whole place beats two hotel rooms',
+      tier: 'most_usage',
+      url: `https://www.airbnb.com/s/${q}/homes?checkin=${checkIn}&checkout=${checkOut}`
+    },
+    {
+      id: 'hotels',
+      title: 'Hotels.com',
+      subtitle: 'Extra inventory if Booking.com is thin',
+      tier: 'most_usage',
+      url: `https://www.hotels.com/search.do?destination=${q}&startDate=${checkIn}&endDate=${checkOut}`
+    }
+  ];
 }
 
 export async function searchAccommodations(

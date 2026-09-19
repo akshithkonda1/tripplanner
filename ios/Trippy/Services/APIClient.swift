@@ -28,6 +28,52 @@ actor APIClient {
         try await get("/trips", decode: TripList.self, idToken: idToken).trips
     }
 
+    func searchStays(
+        tripId: String,
+        city: String,
+        checkIn: String,
+        checkOut: String,
+        adults: Int,
+        idToken: String?
+    ) async throws -> RankedStaySearch {
+        let path = "/trips/\(tripId)/stays/search?\(query([
+            "city": city,
+            "checkIn": checkIn,
+            "checkOut": checkOut,
+            "adults": String(adults)
+        ]))"
+        return try await get(path, decode: RankedStaySearch.self, idToken: idToken)
+    }
+
+    func searchFlights(
+        tripId: String,
+        from: String,
+        to: String,
+        depart: String,
+        returnDate: String?,
+        adults: Int,
+        idToken: String?
+    ) async throws -> RankedFlightSearch {
+        var items = [
+            "from": from,
+            "to": to,
+            "depart": depart,
+            "adults": String(adults)
+        ]
+        if let returnDate { items["returnDate"] = returnDate }
+        let path = "/trips/\(tripId)/flights/search?\(query(items))"
+        return try await get(path, decode: RankedFlightSearch.self, idToken: idToken)
+    }
+
+    private func query(_ items: [String: String]) -> String {
+        items.map { key, value in
+            let encoded = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value
+            return "\(key)=\(encoded)"
+        }
+        .sorted()
+        .joined(separator: "&")
+    }
+
     func planTrip(id: String, message: String, travelMode: TravelMode, idToken: String?) async throws -> Data {
         struct Body: Encodable {
             var message: String

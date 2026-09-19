@@ -8,7 +8,7 @@ enum LocalPlanner {
         case .flight:
             return """
             For \(trip.name) I’ll keep this as city stays, not driving days.
-            You typed “\(text)”. Log the actual flights yourself on the Flights tab — we don’t buy or scrape fares.
+            You typed “\(text)”. Open the Flights tab — listings stay in Trippy, ranked by value per person. Payment is still Booking.com.
             I’d linger longer in \(trip.origin.name) and \(trip.destination.name) unless you want a whirlwind.
             """
         case .hybrid:
@@ -68,7 +68,7 @@ enum LocalPlanner {
                         name: index == 0 ? "Arrive / settle in \(city)" : "Walk \(city) on a shoestring",
                         location: index == 0 ? trip.origin : trip.destination,
                         durationMinutes: 240,
-                        notes: "City stay — no fare API. Add your real flight on the Flights tab.",
+                        notes: "City stay — hunt the cheap flight on the Flights tab (Booking.com first), then log the ticket you buy.",
                         isBooked: false
                     )
                 ]

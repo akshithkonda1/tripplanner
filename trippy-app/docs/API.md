@@ -170,11 +170,12 @@ wss://your-ws-api.execute-api.us-east-1.amazonaws.com/production?tripId={tripId}
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/flights/search` | Cheapest-first fare search |
+| GET | `/trips/{tripId}/stays/search` | Ranked stay cards (Booking.com → Trippy value) |
+| GET | `/trips/{tripId}/flights/search` | Ranked fare cards + travel-hack tags |
 | POST | `/trips/{tripId}/flights` | Attach a fare to a leg |
 | GET | `/flights/status/{flightNumber}` | Live status for the active leg |
 
-Those flight-search routes are **not** being built. Flight Mode is tickets you log yourself. Sam still plans on Bedrock / on-device.
+Paid GDS fare-search is **not** being built. The iOS Stays and Flights tabs show native cards. Inventory is Booking.com Demand API when `BOOKING_DEMAND_TOKEN` is set, otherwise a Booking.com-shaped catalog. Trippy grades value per person and tags travel hacks (including hidden-city, with a warning). **Book on Booking.com** opens that listing’s checkout. You log the ticket you bought. Sam still plans on Bedrock / on-device.
 
 ## Error Responses
 
